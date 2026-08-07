@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Điều phối phòng khám — BVTD CS1</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="stylesheet" href="style.css">
+  <!-- Kiểu dáng riêng của tab Phòng · Giường (mọi selector nằm trong #tab-giuong) -->
+  <link rel="stylesheet" href="giuong.css">
+  <!-- Màn hình đăng nhập (chỉ hiện ở bản công khai — xem auth.js) -->
+  <link rel="stylesheet" href="auth.css">
+  <!-- Bản công khai KHÔNG cho công cụ tìm kiếm lập chỉ mục -->
+  <meta name="robots" content="noindex, nofollow">
+</head>
+<body>
+  <!-- Thanh tiến trình cập nhật (chạy khi đang nạp lại số liệu) -->
+  <div id="topbar" aria-hidden="true"></div>
+  <!-- Header + Tabs dính chung 1 khối sticky → không lệch, không đè mất chữ tab -->
+  <div class="topstack">
+    <header>
+      <div class="brand">
+        <img class="brand-logo" src="assets/logo-tudu.png" width="54" height="54"
+             alt="Logo Bệnh viện Từ Dũ">
+        <div>
+          <h1>Bảng điều phối phòng khám <span class="h1-site">· BVTD Cơ Sở 1</span></h1>
+          <p class="sub"><span class="date-chip">📅 Ngày <b id="report-date">—</b></span>
+            <span class="sub-note">mỗi khối ghi rõ giờ chụp riêng</span></p>
+        </div>
+      </div>
+      <div class="head-right">
+        <span id="refresh-status" class="refresh-status" role="status" aria-live="polite"></span>
+        <button type="button" id="btn-tv" class="btn-tool" aria-label="Màn hình tường" title="Chế độ màn hình tường — chữ to (Esc để thoát)">📺</button>
+        <button type="button" id="btn-print" class="btn-tool" aria-label="In" title="In / xuất PDF tab đang xem (1 trang ngang)">🖨</button>
+        <button type="button" id="update-bar" class="update-bar" aria-live="polite"
+                title="Số liệu tự cập nhật theo chu kỳ trong giờ làm. Bấm để kiểm tra ngay.">
+          <span class="ub-fill"></span>
+          <span class="ub-label">Tự cập nhật</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Tabs. Huy hiệu = số nhóm/phòng cần can thiệp → biết ngay tab nào đang nóng, khỏi phải click.
+         Thêm tab mới: 1 nút ở đây + 1 panel bên dưới + 1 luồng scraper (xem CLAUDE.md §9). -->
+    <nav class="tabs">
+      <button type="button" class="tab active" data-tab="clinic"><span class="tab-ico" aria-hidden="true">🩺</span><span class="tab-txt">Phòng khám</span><span class="tab-badge" id="badge-clinic" hidden></span></button>
+      <button type="button" class="tab" data-tab="cls"><span class="tab-ico" aria-hidden="true">🩻</span><span class="tab-txt">CĐHA&#8202;-&#8202;TDCN</span><span class="tab-badge" id="badge-cls" hidden></span></button>
+      <!-- Huy hiệu tab giường = số người ĐANG CẦN bố trí giường (chờ tiếp nhận vào khoa) — con số
+           HÀNH ĐỘNG, song song với "phòng cần can thiệp" của 2 tab kia. Dữ liệu nạp LƯỜI (giuong.js). -->
+      <button type="button" class="tab" data-tab="giuong"><span class="tab-ico" aria-hidden="true">🛏</span><span class="tab-txt">Phòng&#8202;·&#8202;Giường</span><span class="tab-badge" id="badge-giuong" hidden></span></button>
+    </nav>
+  </div><!-- /topstack -->
+
+  <!-- PHẠM VI đang hiển thị — chỉ hiện khi scraper đang LỌC KHU (data.khu_filter, xem KHU_HIEN_THI).
+       BẮT BUỘC phải nói ra: mọi con số trên cả 2 tab chỉ tính các khu này, không phải cả viện. -->
+  <div class="scope-band" id="scope-band" hidden></div>
+
+  <!-- ===== TAB 1: Phòng khám ===== -->
+  <div id="tab-clinic" class="tab-panel active">
+  <!-- Mốc giờ chụp riêng của khối này -->
+  <div class="sec-fresh" id="clinic-fresh"></div>
+  <!-- Dải HÀNH ĐỘNG: dịch số → việc cần điều phối ngay (nhìn 1 lần là biết phải làm gì) -->
+  <div class="action-band" id="clinic-action"></div>
+  <!-- KPI tổng -->
+  <section class="kpis" id="kpis"></section>
+
+  <!-- Lưới phòng khám (sắp theo đang chờ giảm dần) -->
+  <main id="rooms" class="rooms"></main>
+
+  <!-- Xu hướng đang chờ theo lần lấy (thứ yếu — thu gọn mặc định) -->
+  <section class="trend">
+    <button type="button" id="trend-toggle" class="trend-toggle" aria-expanded="false">
+      <span class="caret">▸</span> Xu hướng hàng đợi trong ca
+    </button>
+    <div id="trend" class="trend-grid" hidden></div>
+  </section>
+  </div><!-- /tab-clinic -->
+
+  <!-- ===== TAB 2: CĐHA - TDCN (Chẩn đoán hình ảnh · Thăm dò chức năng) =====
+       Hai khối, hai câu hỏi khác nhau — cùng một mốc số liệu:
+         (1) PHÒNG thực hiện → điều phối NHÂN LỰC ("dồn người về phòng nào") — như tab Phòng khám.
+         (2) DỊCH VỤ         → loại kỹ thuật nào đang ùn ("siêu âm hay X-quang tắc"). -->
+  <div id="tab-cls" class="tab-panel">
+    <!-- Mốc giờ chụp RIÊNG của khối CĐHA (luồng chạy độc lập với Phòng khám) -->
+    <div class="sec-fresh" id="cls-fresh"></div>
+    <div class="action-band" id="cls-action"></div>
+    <section class="kpis" id="cls-kpis"></section>
+
+    <!-- KHỐI 1 — DANH SÁCH VIỆC: phòng cần dồn người. Đây là thứ DUY NHẤT hiện mặc định.
+         Phần tra cứu (toàn bộ phòng theo khu) do JS dựng bên trong, nằm sau 1 nút bấm. -->
+    <main id="cls-rooms" class="rooms"></main>
+
+    <!-- KHỐI 2 — theo dịch vụ. GẬP MẶC ĐỊNH: đây là câu hỏi PHÂN TÍCH ("kỹ thuật nào ùn"),
+         không phải việc cần làm ngay → không được chiếm chỗ của danh sách việc. -->
+    <button type="button" id="cls-svc-toggle" class="big-toggle" aria-expanded="false">
+      <span class="caret">▸</span> Xem theo loại kỹ thuật
+      <span class="bt-sub">siêu âm · X-quang · NST…</span>
+    </button>
+    <section class="cls-wrap" id="cls-svc" hidden>
+      <div class="cls-head">
+        <h2>Ca chưa xong theo dịch vụ
+          <span class="sub2" id="cls-captured">—</span></h2>
+        <!-- Bảng này gộp theo DỊCH VỤ (không có chiều khu — xem CLAUDE.md §12.2) nên khi đang lọc khu
+             thì nó vẫn là số TOÀN VIỆN. Phải ghi rõ, đừng để đọc nhầm là cùng phạm vi với KPI trên. -->
+        <p class="svc-scope" id="cls-svc-scope" hidden></p>
+        <div class="cls-sort">
+          <span>Sắp theo:</span>
+          <button type="button" class="sortbtn active" data-sort="backlog">Ca chưa xong</button>
+          <button type="button" class="sortbtn" data-sort="tong">Tổng ca</button>
+        </div>
+      </div>
+      <!-- Chú thích thanh tiến độ (đặt TRÊN bảng, gần nơi dùng) -->
+      <div class="cls-legend" id="cls-legend">
+        <span class="leg-lead">Độ dài thanh = số ca (cùng thang đo)</span>
+        <span class="leg-sep">|</span>
+        <span><i class="sw s-cho"></i> Chờ tiếp nhận</span>
+        <span><i class="sw s-lam"></i> Đang làm</span>
+        <span><i class="sw sw-done"></i> Đã xong</span>
+        <span class="leg-sep">|</span>
+        <span><i class="mk mk-red">⬤</i> Ùn nặng</span>
+        <span><i class="mk mk-amber">⬤</i> Cần theo dõi</span>
+      </div>
+      <div id="cls-table"></div>
+    </section>
+  </div><!-- /tab-cls -->
+
+  <!-- ===== TAB 3: Phòng · Giường nội trú =====
+       Người dùng khác 2 tab trên (điều dưỡng/nhân viên xếp giường, không phải BGĐ) và dữ liệu cũng
+       khác luồng (`beds_flow.py --nb` → giuong-data.js). Trước 2026-07-22 là TRANG RIÊNG giuong.html;
+       user chốt đưa vào làm TAB THẬT của dashboard tổng.
+       Markup ở đây để TĨNH (khung rỗng), nội dung do giuong.js dựng sau khi nạp dữ liệu.
+       ⚠️ Dữ liệu ~530 KB nên NẠP LƯỜI: chỉ tải khi tab được mở lần đầu (xem giuong.js). -->
+  <div id="tab-giuong" class="tab-panel">
+    <!-- Mốc số liệu RIÊNG của luồng giường (chu kỳ 5'), ngưỡng cảnh báo cũ riêng — xem giuong.js -->
+    <div class="sec-fresh" id="g-fresh"></div>
+    <div class="g-kpis" id="g-kpis"></div>
+
+    <!-- Thanh điều phối DÍNH: bảng khoa + ô tìm đi theo người dùng suốt hàng trăm màn cuộn -->
+    <div class="g-stickybar" id="g-stickybar">
+      <div class="g-khoas" id="g-khoas"></div>
+      <div class="g-tools">
+        <!-- ĐT: bảng 14 khoa dính theo thì ngốn hết màn → thu thành 1 nút, bấm mới bung.
+             Nhãn nút LUÔN nói khoa đang xem + còn trống bao nhiêu (người xếp giường cần đúng số đó). -->
+        <button class="g-pick" id="g-pick" type="button" aria-expanded="false">
+          <span class="plab" id="g-pickLab">Chọn khoa</span><span class="cev">▾</span>
+        </button>
+        <input id="g-q" type="search" placeholder="Tìm tên người bệnh, số giường hoặc phòng…">
+        <!-- Chú giải màu ĐỒNG THỜI là BỘ LỌC (user chốt 2026-07-23): bấm 1 trạng thái thì chỉ
+             hiện giường thuộc trạng thái đó, cộng dồn với từ khóa đang gõ (vd "h6" + Giường trống).
+             Chọn được NHIỀU trạng thái cùng lúc = HOẶC (trống + sắp ra viện = chỗ sắp có).
+             Màu ô vuông phải TRÙNG viền trái thẻ giường (giuong.css) — lọc một đằng màu bày
+             một nẻo là mất niềm tin. -->
+        <div class="g-legend" role="group" aria-label="Lọc theo trạng thái giường">
+          <button class="g-lg" type="button" data-tt="trong"  aria-pressed="false"><i></i>Giường trống</button>
+          <button class="g-lg" type="button" data-tt="nguoi"  aria-pressed="false"><i></i>Đang có người</button>
+          <button class="g-lg" type="button" data-tt="sap_ra" aria-pressed="false"><i></i>Sắp ra viện</button>
+          <button class="g-lg" type="button" data-tt="nhieu"  aria-pressed="false"><i></i>Nhiều người bệnh</button>
+          <button class="g-lg-clear an" type="button" id="g-lgClear">✕ Bỏ lọc</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="g-body"></div>
+    <div class="g-foot">
+      Mẹ và con nằm chung một giường được tính là <b>một giường</b>. Người bệnh chưa xếp giường phần lớn là
+      trẻ sơ sinh nằm cùng mẹ — được liệt kê riêng ở cuối mỗi khoa.
+    </div>
+    <button class="g-top-btn an" id="g-toTop" type="button">↑ Đầu trang</button>
+  </div><!-- /tab-giuong -->
+
+  <footer id="footer"></footer>
+
+  <!-- Chỉ báo chế độ TV (góc dưới) -->
+  <div class="tv-hud" aria-hidden="true"><span class="dot"></span>
+    <span>Màn hình tường · Esc để thoát</span></div>
+
+  <!-- ⚠️ KHÔNG nạp thẳng data.js / app.js / giuong.js ở đây nữa.
+       auth.js là NƠI DUY NHẤT quyết định thứ tự nạp, vì bản công khai phải xác thực
+       XONG mới được phép chạm vào số liệu:
+         • trong viện  (api-config.js khai API_BASE = null) → nạp data.js → app.js → giuong.js,
+           không đăng nhập, y hệt cách chạy cũ;
+         • công khai   (API_BASE trỏ Cloudflare Worker)     → bắt đăng nhập, số liệu lấy qua API.
+       Đổi thứ tự nạp ở đây mà quên auth.js là bản công khai vẽ giao diện TRƯỚC khi xác thực. -->
+  <script src="api-config.js"></script>
+  <script src="auth.js"></script>
+</body>
+</html>

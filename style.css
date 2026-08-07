@@ -1,0 +1,1537 @@
+:root {
+  /* Brand Từ Dũ — LẤY ĐÚNG TỪ logo-BVTD.png: xanh #0076BC, hồng #F16DA7 (xem brand-kit.md) */
+  --brand-blue: #0076BC; --brand-blue-dark: #005A92; --brand-blue-50: #E6F3FB;
+  --brand-pink: #F16DA7; --brand-pink-dark: #D94E8E; --brand-pink-50: #FDEBF3;
+  /* Trạng thái RAG */
+  --red: #dc2626; --red-bg: #fef2f2;
+  --amber: #d97706; --amber-bg: #fffbeb;
+  --green: #16a34a; --green-bg: #f0fdf4;
+  --gray: #94a3b8; --gray-bg: #f8fafc;
+  --ink: #0f172a; --muted: #64748b; --line: #e2e8f0;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: #f1f5f9; color: var(--ink);
+  font-family: "Segoe UI", system-ui, Arial, sans-serif;
+}
+/* Khối đầu trang dính chung (header + tabs) → di chuyển cùng nhau, không đè mất chữ */
+.topstack { position: sticky; top: 0; z-index: 5; }
+header {
+  background: linear-gradient(100deg, var(--brand-blue), var(--brand-blue-dark));
+  color: #fff; padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  border-bottom: 3px solid var(--brand-pink);   /* gạch nhấn hồng — nhận diện Từ Dũ */
+}
+header h1 { margin: 0; font-size: 23px; font-weight: 800; letter-spacing: -.2px; }
+header h1 .h1-site { font-weight: 500; opacity: .82; font-size: 17px; }
+header .sub { margin: 7px 0 0; font-size: 14px; opacity: .95; display: flex; align-items: center; gap: 12px; }
+/* Ngày báo cáo = chip nổi (bối cảnh quan trọng nhất, đọc tức thì) */
+header .sub .date-chip { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px; padding: 3px 12px; font-size: 13.5px; }
+header .sub .date-chip b { font-weight: 800; }
+header .sub .sub-note { opacity: .82; font-size: 12.5px; }
+/* Logo Từ Dũ thật (nét xanh trong suốt → đặt trên CHIP TRẮNG để nổi trên header xanh) */
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-logo { flex: none; width: 54px; height: 54px; display: block;
+  background: #fff; border-radius: 50%; padding: 4px; box-shadow: 0 2px 6px rgba(0,0,0,.22); }
+
+/* Thanh tiến trình cập nhật trên đỉnh trang (kiểu YouTube/GitHub) — bước thật, không trickle giả */
+#topbar {
+  position: fixed; top: 0; left: 0; height: 4px; width: 0;
+  background: linear-gradient(90deg, #4FB3E6, var(--brand-blue), #9AD3F0);  /* azure brand cho thanh tải */
+  box-shadow: 0 0 12px rgba(0,118,188,.65); border-radius: 0 4px 4px 0;
+  z-index: 9999; opacity: 0; overflow: hidden;
+  transition: width .35s cubic-bezier(.4,0,.2,1), opacity .35s ease;
+}
+#topbar.on { opacity: 1; }
+/* Vệt sáng chạy liên tục dọc phần đã đầy → tín hiệu "đang hoạt động" (không đứng hình giữa các bước).
+   Clip trong overflow:hidden nên chỉ quét trong bề rộng hiện tại. */
+#topbar::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.65) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: tbshimmer 1.15s ease-in-out infinite;
+}
+/* Khi đầy 100% → loé xanh-lá xác nhận XONG trước khi tắt (tín hiệu hoàn tất rõ ràng); tắt shimmer. */
+#topbar.done { background: linear-gradient(90deg, #34d399, var(--green), #6ee7b7);
+  box-shadow: 0 0 14px rgba(22,163,74,.7); opacity: 0; }
+#topbar.done::after { animation: none; opacity: 0; }
+@keyframes tbshimmer { 0% { transform: translateX(-100%); } 55%,100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  #topbar { transition: opacity .25s ease; }
+  #topbar::after { animation: none; opacity: 0; }   /* không quét sáng khi user tắt chuyển động */
+}
+
+/* ⚠️ `flex-wrap` + `min-width:0`: dải 721–800px chưa vào media 720 nên header vẫn bố cục desktop,
+   mà pill mốc giờ + 2 nút + thanh 230px cộng lại rộng hơn chỗ còn lại → TRÀN NGANG cả trang
+   (đo thật ở 760px: scrollWidth 777 > 760, dính CẢ 3 TAB). Cho xuống hàng thay vì đẩy tràn. */
+.head-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end;
+  min-width: 0; max-width: 100%; }
+.head-right .update-bar { max-width: 100%; }
+/* ===== Thanh đếm ngược tự-cập-nhật (thay nút "Làm mới") =====
+   Đầy dần theo thời gian thực từ mốc vừa cập nhật → 1 chu kỳ auto (30').
+   Gần đầy = sắp tới lượt thu (download→chạy code→đẩy web). Phát hiện bản mới
+   → vọt tới 100% + loé xanh-lá → reset chạy lại. Bấm = kiểm tra ngay. */
+.update-bar {
+  position: relative; overflow: hidden; cursor: pointer;
+  width: 230px; height: 38px; border: 0; border-radius: 9px; padding: 0;
+  background: rgba(255,255,255,.16); color: #fff;
+  font-size: 13.5px; font-weight: 600; text-align: left;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.28);
+}
+.update-bar:hover { box-shadow: inset 0 0 0 1px rgba(255,255,255,.55); }
+.update-bar .ub-fill {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,.32), rgba(255,255,255,.18));
+  transition: width 1s linear;
+}
+.update-bar .ub-label {
+  position: relative; z-index: 1; display: flex; align-items: center; gap: 7px;
+  height: 100%; padding: 0 13px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums;
+}
+/* Đã quá mốc chu kỳ → đang chạy pipeline (thu/đẩy web), chờ bản mới — nhịp hồng */
+.update-bar.overdue .ub-fill {
+  background: linear-gradient(90deg, var(--brand-pink), var(--brand-pink-dark));
+  animation: ubpulse 1.4s ease-in-out infinite; }
+/* Vừa nhận bản mới — loé xanh-lá rồi reset */
+.update-bar.done .ub-fill { background: #16a34a; transition: width .35s ease-out; }
+.update-bar.done { box-shadow: inset 0 0 0 1px rgba(134,239,172,.85); }
+/* Đang kiểm tra (bấm tay / auto poll) — nhịp xanh brand */
+.update-bar.checking .ub-fill {
+  background: linear-gradient(90deg, #4FB3E6, var(--brand-blue));
+  animation: ubpulse 1s ease-in-out infinite; }
+/* Ngoài giờ làm — tạm dừng, xám */
+.update-bar.offhours { background: rgba(255,255,255,.10); color: var(--brand-blue-50); }
+.update-bar.offhours .ub-fill { background: rgba(255,255,255,.10); animation: none; }
+@keyframes ubpulse { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
+@media (prefers-reduced-motion: reduce) {
+  .update-bar .ub-fill { transition: none; animation: none; }
+}
+
+/* Pill trạng thái cập nhật — không chặn thao tác */
+.refresh-status {
+  display: inline-flex; align-items: center; gap: 7px; pointer-events: none;
+  font-size: 13px; color: var(--brand-blue-50); background: rgba(255,255,255,.12);
+  padding: 6px 12px; border-radius: 999px; white-space: nowrap; min-height: 30px;
+}
+.refresh-status .ic { display: inline-block; font-size: 14px; line-height: 1; }
+/* Khoá bề rộng khi đang chạy → chữ bước dài/ngắn KHÔNG đẩy lệch các nút bên cạnh (header không rung) */
+.refresh-status.updating { color: #fff; background: rgba(255,255,255,.22);
+  width: 280px; justify-content: flex-start; }
+/* Spinner = VÒNG CSS sạch (thay ký tự ⟳ xoay lợn cợn) → nhìn chuyên nghiệp, sắc nét */
+.refresh-status.updating .ic { width: 14px; height: 14px; font-size: 0; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.42); border-top-color: #fff;
+  animation: spin .7s linear infinite; }
+/* Việc đang làm + số % (đếm tới 100 = tín hiệu XONG) */
+.refresh-status .rs-msg { font-weight: 600; flex: 1; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.refresh-status .rs-pct { font-weight: 800; font-variant-numeric: tabular-nums;
+  min-width: 40px; text-align: right; letter-spacing: .2px; flex: none; }
+.refresh-status .rs-pct.ok { color: #bbf7d0; }
+.refresh-status.ok .ic { color: #86efac; }
+.refresh-status.warn { color: #fde68a; background: rgba(217,119,6,.30); }
+.refresh-status.err { color: #fecaca; background: rgba(248,113,113,.35); font-weight: 700; }
+.refresh-status .flash { animation: flashfade 1.4s ease-out; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes flashfade { 0% { background: #16a34a; color: #fff; } 100% {} }
+/* Tôn trọng người dùng tắt hiệu ứng chuyển động: bỏ spinner, giữ chữ tĩnh */
+@media (prefers-reduced-motion: reduce) {
+  .refresh-status.updating .ic { animation: none; }
+  .refresh-status .flash { animation: none; }
+}
+
+/* KPI tổng */
+.kpis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px; padding: 16px 24px 4px;
+}
+.kpi {
+  background: #fff; border-radius: 12px; padding: 16px 18px;
+  border-left: 6px solid var(--line); box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  min-height: 92px;   /* khoá chiều cao → tránh nhảy layout (CLS) khi số đổi */
+}
+.kpi .big { font-size: 34px; font-weight: 800; line-height: 1; }
+/* Thẻ CHỦ ĐẠO (tồn đọng) — số to hơn để mắt bắt trước (research: backlog = số quyết định) */
+.kpi.hero { box-shadow: 0 2px 8px rgba(15,23,42,.10); }
+.kpi.hero .big { font-size: 46px; }
+.kpi .lbl { color: var(--muted); font-size: 14px; margin-top: 6px; }
+.kpi.alert, .kpi.red { border-left-color: var(--red); }
+.kpi.ok { border-left-color: var(--green); }
+.kpi.amber { border-left-color: var(--amber); }
+.kpi.info { border-left-color: var(--brand-blue); }
+.kpi.alert .big, .kpi.red .big { color: var(--red); }
+.kpi.amber .big { color: var(--amber); }
+/* Thẻ CẢNH BÁO GẤP: nền đỏ nhạt + số to hơn → bắt mắt ngay là việc cần can thiệp (tĩnh, không nhấp nháy) */
+.kpi.kpi-alarm { background: var(--red-bg); border-color: #fecaca; box-shadow: 0 2px 8px rgba(220,38,38,.12); }
+.kpi.kpi-alarm .big { font-size: 46px; }
+.kpi.kpi-alarm .lbl { color: #991b1b; font-weight: 700; }
+.kpi.kpi-alarm .sub-metric b { color: var(--red); }
+.kpi .sub-metric { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+.kpi .kpibar { height: 7px; border-radius: 4px; background: #e2e8f0; overflow: hidden; margin-top: 8px; }
+.kpi .kpibar > i { display: block; height: 100%; background: var(--green); }
+
+/* Badge mốc giờ chụp riêng từng khối (per-section freshness) */
+/* PHẠM VI đang hiển thị — chỉ hiện khi scraper lọc khu (KHU_HIEN_THI). Nằm NGAY dưới tabs, ngoài
+   mọi tab → cả 2 tab đều thấy, không phải nhắc lại 2 nơi. Dùng xanh brand (thông tin), KHÔNG dùng
+   đỏ/cam: đây là bối cảnh phạm vi, không phải cảnh báo quá tải — tô đỏ là cướp màu của RAG. */
+.scope-band {
+  display: flex; align-items: baseline; gap: 9px;
+  margin: 12px 24px 0; padding: 9px 14px;
+  background: var(--brand-blue-50); border: 1px solid #bfe0f4;
+  border-left: 4px solid var(--brand-blue);
+  border-radius: 8px; font-size: 13.5px; color: var(--brand-blue-dark);
+}
+/* ⚠️ `display:flex` ở trên THẮNG thuộc tính `hidden` của HTML → `el.hidden = true` chỉ xoá chữ mà
+   vẫn chừa một khung rỗng cao ~40px (thấy rõ ở tab Phòng·Giường, nơi dải này luôn bị ẩn). */
+.scope-band[hidden] { display: none; }
+.scope-band .sb-ico { flex: none; font-size: 15px; }
+.scope-band .sb-text b { color: var(--ink); font-weight: 800; }
+.scope-band .sb-note { color: var(--muted); }
+/* Bảng dịch vụ CĐHA khác phạm vi với phần phòng (pivot theo dịch vụ, không tách được khu) */
+.svc-scope {
+  margin: 6px 0 0; padding: 7px 11px; font-size: 12.5px; line-height: 1.45;
+  color: #92400e; background: var(--amber-bg); border: 1px solid #fde68a; border-radius: 7px;
+}
+.svc-scope b { color: var(--ink); }
+
+.sec-fresh { padding: 12px 24px 0; }
+.freshness { display: inline-flex; align-items: center; gap: 7px; font-size: 13px;
+  color: var(--muted); background: #fff; border: 1px solid var(--line);
+  padding: 5px 12px; border-radius: 999px; }
+.freshness .fdot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); flex: none; }
+.freshness.warn { color: #92400e; border-color: #fde68a; background: var(--amber-bg); }
+.freshness.warn .fdot { background: var(--amber); }
+/* DỮ LIỆU CŨ: banner 3 phần (nhãn · giờ · việc cần làm) trải đều → không còn khoảng đỏ trống.
+   Nền hổ phách viền hổ phách thay vì đỏ đặc → cảnh báo rõ mà KHÔNG tranh đỏ với "phòng quá tải" thật. */
+/* ⚠️ `flex-wrap` bắt buộc: 3 mẩu chữ + `flex:none` ở 2 đầu thì trên ĐT (390px) mẩu "việc cần làm"
+   đẩy banner rộng 408px → TRÀN NGANG cả trang (đo thật khi tab Phòng·Giường ở trạng thái số cũ).
+   Cho xuống hàng thay vì cắt chữ: câu này là chỉ dẫn sửa lỗi, cắt mất là banner vô dụng. */
+.freshness.stale { color: #92400e; border: 1.5px solid var(--amber); background: var(--amber-bg);
+  font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 6px 10px;
+  flex-wrap: wrap; width: 100%; padding: 9px 16px; }
+.freshness.stale .fdot { background: var(--amber); width: 10px; height: 10px;
+  animation: pulse 1.6s ease-in-out infinite; }
+.freshness.stale .f-tag { color: #fff; background: var(--amber); border-radius: 999px;
+  padding: 2px 10px; font-size: 12px; font-weight: 800; letter-spacing: .3px; flex: none; }
+.freshness.stale .f-mid { color: #78350f; }
+.freshness.stale .f-act { margin-left: auto; font-weight: 700; color: #b45309; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .freshness.stale .fdot { animation: none; } }
+.freshness.none { color: var(--gray); }
+
+/* ===== Dải HÀNH ĐỘNG (action band) — HERO: người quản lý đọc ĐẦU TIÊN =====
+   Bố cục 2 hàng: hàng trên = tình hình + đối tượng; hàng dưới = VIỆC CẦN LÀM (mệnh lệnh). */
+.action-band {
+  margin: 14px 24px 0; padding: 16px 20px; border-radius: 14px;
+  display: flex; flex-direction: column; gap: 12px;
+  font-size: 15px; border: 1px solid transparent; border-left-width: 7px;
+  box-shadow: 0 3px 12px rgba(0,0,0,.08);
+}
+.action-band.ok { flex-direction: row; align-items: center; gap: 10px; }
+.action-band.red   { background: var(--red-bg);   border-color: #fecaca; border-left-color: var(--red);   color: #991b1b; }
+.action-band.amber { background: var(--amber-bg); border-color: #fde68a; border-left-color: var(--amber); color: #92400e; }
+.action-band.ok    { background: var(--green-bg); border-color: #bbf7d0; border-left-color: var(--green); color: #166534; }
+.action-band .ab-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.action-band .ab-ic { font-size: 26px; line-height: 1; flex: none; }
+.action-band .ab-head { font-weight: 800; font-size: 18px; }
+.action-band .ab-text { font-weight: 600; }
+.action-band .ab-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.action-band .ab-chip {
+  background: #fff; border: 1px solid currentColor; border-radius: 999px;
+  padding: 4px 12px; font-size: 13.5px; font-weight: 600; white-space: nowrap;
+}
+.action-band.red .ab-chip   { color: #991b1b; }
+.action-band.amber .ab-chip { color: #92400e; }
+.action-band .ab-chip b { font-weight: 800; }
+/* VIỆC CẦN LÀM — pill mệnh lệnh nổi bật (không còn chữ nghiêng mờ) */
+.action-band .ab-do { display: flex; align-items: center; gap: 10px; }
+.action-band .ab-do-lbl { flex: none; font-size: 11px; font-weight: 800; letter-spacing: .5px;
+  color: #fff; border-radius: 6px; padding: 3px 9px; }
+.action-band.red   .ab-do-lbl { background: var(--red); }
+.action-band.amber .ab-do-lbl { background: var(--amber); }
+.action-band .ab-do-text { font-size: 15.5px; font-weight: 700; }
+
+/* Legend */
+.legend {
+  display: flex; flex-wrap: wrap; gap: 18px; padding: 8px 24px 0;
+  font-size: 13px; color: var(--muted);
+}
+.legend .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.dot.red { background: var(--red); } .dot.amber { background: var(--amber); }
+.dot.green { background: var(--green); } .dot.gray { background: var(--gray); }
+/* Số 0 mờ đi để con số có nghĩa bật lên (giảm nhiễu thị giác) */
+.z0 { color: #cbd5e1; font-weight: 400; }
+/* Xu hướng hàng đợi trên thẻ phòng = PILL (đọc rõ trên mọi nền): tăng=đỏ, giảm=xanh, phẳng=xám */
+.qtrend { font-size: 12px; font-weight: 800; margin-left: 10px; vertical-align: 5px;
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.qtrend.up { color: #fff; background: var(--red); }
+.qtrend.cool { color: #fff; background: var(--amber); }   /* giảm nhưng còn đông — khớp panel xu hướng */
+.qtrend.down { color: #fff; background: var(--green); }
+.qtrend.flat { color: var(--muted); background: #fff; border: 1px solid var(--line); }
+body.tv .qtrend { font-size: 16px; vertical-align: 8px; }
+
+/* Khu phòng khám: container thường; lưới chỉ áp cho khối phòng NÓNG */
+.rooms { padding: 12px 24px; }
+.rooms-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+/* ===== Gom nhóm theo KHU (M / N ngoại trú · Nội trú-Khác) → khoa ===== */
+.khu-block { margin: 4px 0 22px; }
+.khu-block + .khu-block { border-top: 1px solid var(--line); padding-top: 16px; }
+.khu-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+.khu-tag { flex: none; align-self: center; font-weight: 800; font-size: 13px; color: #fff;
+  width: 26px; height: 26px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+
+/* ===== TAB CĐHA v3 — DANH SÁCH VIỆC (thay cho thẻ) =====
+   Thẻ ngốn ~120px/phòng cho thanh bar + 2 ô chờ/làm — thông tin thêm KHÔNG đổi được quyết định.
+   Dòng chỉ ~58px và nói đủ 3 thứ cần: TÊN · Ở ĐÂU + nút thắt · SỐ TỒN. */
+.hot-title { font-size: 19px; font-weight: 800; color: var(--ink); margin: 6px 0 10px; }
+.hot-title .hot-sub { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-top: 3px; }
+.hot-row { position: relative; display: flex; align-items: center; gap: 10px; padding: 10px 12px 13px;
+  margin-bottom: 6px; border: 1px solid var(--line); border-left: 4px solid var(--red);
+  border-radius: 10px; background: #fff; overflow: hidden; }
+/* Thanh tỉ lệ — độ dài = tồn đọng / phòng nặng nhất. Đặt ở ĐÁY dòng, KHÔNG tô nền cả dòng:
+   nền full-height tạo mép cứng cắt ngang tên phòng, đọc bị vấp. Dải 5px ở đáy cho cùng thông tin
+   (so độ dài) mà không đụng vào chữ. */
+.hr-fill { position: absolute; left: 0; bottom: 0; height: 5px; background: var(--red);
+  opacity: .55; border-radius: 0 3px 0 0; z-index: 0; }
+.hot-row > .hr-rank, .hot-row > .hr-main, .hot-row > .hr-num { position: relative; z-index: 1; }
+.hr-rank { flex: none; width: 22px; text-align: center; font-size: 13px; font-weight: 800; color: var(--muted); }
+.hr-main { flex: 1; min-width: 0; }
+.hr-name { display: block; font-size: 15.5px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+.hr-sub { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+.hr-num { flex: none; text-align: right; font-size: 30px; font-weight: 800; color: var(--red); line-height: 1; }
+/* Đơn vị ngay dưới số: số trần ("41") không tự nói nó là NGƯỜI CHỜ hay CA CHƯA XONG. */
+.hr-num small { display: block; font-size: 9.5px; font-weight: 600; color: var(--muted);
+  line-height: 1.2; margin-top: 3px; letter-spacing: .1px; }
+
+/* Nút bấm lớn mở phần TRA CỨU — không giấu thông tin (số ghi ngay trên nút), chỉ không cho nó
+   chiếm chỗ của danh sách việc. Cao ≥52px cho ngón tay. */
+.big-toggle { display: block; width: 100%; min-height: 52px; text-align: left; margin: 16px 0 0;
+  background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+  font-size: 15px; font-weight: 700; color: var(--brand-blue-dark); cursor: pointer; }
+.big-toggle:hover { background: #f8fafc; }
+.big-toggle .caret { display: inline-block; width: 16px; color: var(--muted); }
+.big-toggle .bt-sub { display: block; margin-left: 16px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
+.cls-rest { margin-top: 12px; }
+/* Bối cảnh cả viện = 1 DÒNG CHỮ đặt DƯỚI danh sách việc (đọc việc trước, bối cảnh sau).
+   Thay cho 3 thẻ KPI ngốn 200px phía trên danh sách — chúng đẩy việc cần làm ra khỏi màn đầu. */
+.cls-ctx { margin: 10px 2px 0; font-size: 13px; color: var(--muted); }
+.cls-ctx b { color: var(--ink); font-size: 15px; }
+
+/* KPI lớn + dải hành động HIỆN ở đầu cả 2 tab (phong cách CS2, user chốt 2026-07-15). */
+/* Màu dòng theo mức: phòng khám dùng cam cho "đông" (5–9) — dòng vẫn đọc được, không phình thẻ */
+.hot-row.amber { border-left-color: var(--amber); }
+.hot-row.amber .hr-num { color: var(--amber); }
+.hot-row.amber .hr-fill { background: var(--amber); }
+
+/* ===== MOBILE — tab CĐHA: dọn phần đầu để THẺ PHÒNG lọt vào màn hình đầu tiên =====
+   Đo trên iPhone (390×844): dải hành động ngốn 360px + 3 thẻ KPI ngốn 300px = 78% màn đầu,
+   nên mở app ra KHÔNG thấy phòng nào — phải cuộn mới biết có việc gì. Hai thứ đó lại là thứ
+   ÍT dùng để ra quyết định nhất:
+   • 3 chip trong dải hành động LẶP y hệt 3 thẻ ngay dưới nó → bỏ trên mobile.
+   • "Tổng chỉ định" và "% hoàn thành" là bối cảnh, không phải việc cần làm → thu nhỏ thành
+     dòng phụ, chỉ giữ "tồn đọng" ở cỡ lớn. */
+.hot-more { margin: 14px 0 6px; font-size: 13px; font-weight: 700; color: #b91c1c; }
+.rc-noi { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 1px; }
+.rc-bs { color: var(--ink); font-weight: 600; }   /* tên bác sĩ nổi hơn phần khoa/tầng cùng dòng phụ */
+/* Số ở dòng tra cứu KHÔNG được xuống dòng — "39 ca chưa / xong" đọc vấp. */
+.room-calm .rc-wait { white-space: nowrap; flex: none; }
+/* Nút bung nhóm "đã xong hết" — không giấu thông tin (số phòng ghi ngay trên nút), chỉ không
+   cho mỗi phòng-không-có-việc chiếm 1 dòng. Cao 44px = chuẩn vùng chạm của Apple HIG. */
+.xong-toggle { width: 100%; min-height: 44px; text-align: left; margin-top: 8px;
+  background: #f8fafc; border: 1px dashed var(--line); border-radius: 10px; padding: 10px 14px;
+  font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.xong-toggle:hover { background: #f1f5f9; }
+.xong-toggle .caret { display: inline-block; width: 14px; }
+
+@media (max-width: 560px) {
+  /* DẢI HÀNH ĐỘNG — GIỮ tiêu đề (tên phòng ưu tiên), chỉ bỏ chip phụ.
+     ⚠️ Trước đây ẩn cả `.ab-top` với lý do "nói y hệt thẻ #1 nằm ngay dưới". Lý do đó CHẾT từ khi
+     §12.8/§12.9 gom phòng theo KHU: thẻ #1 không còn nằm dưới dải nữa — phòng nặng nhất viện thường
+     ở Khu N (khu CUỐI theo TOA_NHA_ORDER), cách dải cả chục màn hình. Ẩn tiêu đề thì trên ĐT chỉ còn
+     "VIỆC CẦN LÀM: tiếp nhận ngay + đẩy nhanh ca đang làm" — mệnh lệnh KHÔNG có địa chỉ, đúng thứ
+     người điều phối cần nhất. Chip 2–4 vẫn ẩn: thứ yếu, và chúng mới là phần lặp lại thẻ. */
+  #tab-cls .action-band { padding: 8px 12px; }
+  #tab-cls .ab-do { margin: 4px 0 0; }
+  #tab-cls .ab-chips { display: none; }
+
+  /* THẺ PHÒNG — nén từ ~330px xuống ~120px. Bản dọc (số lớn 1 dòng, thanh 1 dòng, 2 ô 1 dòng)
+     ngốn cả nửa màn hình cho MỘT phòng → cuộn 11 phòng mất 4 màn. Bản ngang: tên+vị trí bên trái,
+     số tồn bên phải, chờ/đang-làm rút thành 1 dòng chữ nhỏ. Vẫn đủ 4 thông tin để ra quyết định. */
+  #tab-cls .cls-hot .rooms-grid { grid-template-columns: 1fr; gap: 8px; }
+  #tab-cls .cls-hot .room { display: grid; grid-template-columns: 1fr auto;
+    grid-template-areas: "name num" "noi num" "bar bar" "detail detail";
+    align-items: center; padding: 10px 12px; row-gap: 2px; column-gap: 10px; }
+  #tab-cls .cls-hot .room .name { grid-area: name; font-size: 15px; }
+  #tab-cls .cls-hot .room .room-noi { grid-area: noi; margin: 0; }
+  #tab-cls .cls-hot .room .wait { grid-area: num; text-align: right; margin: 0; }
+  #tab-cls .cls-hot .room .wnum { font-size: 34px; line-height: 1; }
+  #tab-cls .cls-hot .room .wait small { display: block; font-size: 10.5px; }
+  #tab-cls .cls-hot .room .bar { grid-area: bar; margin: 6px 0 4px; height: 5px; }
+  /* 2 ô chờ/đang-làm → 1 hàng phẳng, bỏ khung hộp (khung cho 2 số là thừa) */
+  #tab-cls .cls-hot .room .detail { grid-area: detail; display: flex; gap: 14px; }
+  #tab-cls .cls-hot .room .d-cell { border: 0 !important; padding: 0 !important; background: none !important;
+    display: flex; align-items: baseline; gap: 5px; font-size: 13px; }
+  #tab-cls .cls-hot .room .d-lbl { font-size: 11.5px; margin: 0; }
+  /* Nút thắt được đánh dấu bằng box-shadow inset (không phải border) → phải tắt riêng, nếu không
+     khung đỏ vẫn còn và số tràn ra ngoài. Trên mobile chỉ cần MÀU CHỮ là đủ báo nút thắt. */
+  #tab-cls .cls-hot .room .d-cell.bottleneck { box-shadow: none !important; background: none !important; }
+  #tab-cls .cls-hot .room .d-cell.bottleneck b { font-size: 15px; }
+  /* Nhãn + số nằm CÙNG hàng ("Chờ tiếp nhận 230") thay vì nhãn trên / số dưới → tiết kiệm 1 dòng
+     mỗi thẻ. ⚠️ CSS gốc đặt .d-cell{flex-direction:column} → phải ép lại row, nếu chỉ đặt
+     display:flex thì vẫn xếp dọc. */
+  #tab-cls .cls-hot .room .d-cell { flex-direction: row; }
+  #tab-cls .cls-hot .room .d-lbl { display: inline; }
+  #tab-cls .cls-hot .room .detail { gap: 16px; margin-top: 2px; }
+
+  /* Vùng chạm ≥44px (Apple HIG) — nút nhỏ hơn thì ngón tay bấm trượt. */
+  #tab-cls .sortbtn, #tab-cls .sg-head { min-height: 44px; }
+
+  /* HEADER — ngốn ~190px chỉ để nói tên bệnh viện (thứ người dùng đã biết) + ngày (đã có ở chip
+     "Chụp lúc"). Thu còn ~56px: 1 dòng, logo nhỏ, bỏ dòng phụ. */
+  header { padding: 8px 14px; }
+  .brand { gap: 9px; }
+  .brand-logo { width: 30px; height: 30px; }
+  header h1 { font-size: 15px; }
+  header h1 .h1-site { display: none; }      /* "· BVTD Cơ Sở 1" — đã có trong tên trang */
+  /* GIỮ chip NGÀY (chỉ nén lại). Trước đây ẩn cả `.sub` với lý do "ngày đã có ở chip Chụp lúc …",
+     nhưng chip đó chỉ ghi GIỜ ("Chụp lúc 17:33 · 1 phút trước") → trên ĐT không còn chỗ nào nói số
+     liệu của NGÀY nào. Mở dashboard cũ/ngoài giờ mà tưởng số hôm nay là ra quyết định trên số chết. */
+  header .sub { margin-top: 4px; font-size: 11.5px; }
+  header .sub .date-chip { padding: 2px 9px; font-size: 11.5px; }
+  /* KPI: chỉ số CHỦ ĐẠO mới đáng to (phòng khám = đang chờ · CĐHA = ca chưa có kết quả). Các thẻ
+     còn lại là BỐI CẢNH → co nhỏ, xếp cạnh nhau, không mỗi cái chiếm trọn chiều ngang.
+     Số chủ đạo bám vào .hero — KHÔNG bám nth-child:
+     nth-child(2) là vị trí của bản renderSvcTab [tổng][tồn đọng][%], nhưng thẻ KPI của tab CĐHA nay
+     do renderClsRooms dựng SAU và ghi đè, thứ tự là [tồn đọng .hero][phòng cần can thiệp][%] →
+     nth-child(2) phóng to nhầm "Phòng cần can thiệp" và ĐẨY "Ca chưa có kết quả" (số chính) xuống
+     thẻ nhỏ. Chọn theo .hero thì đổi thứ tự thẻ cũng không lệch lại.
+     (Luật kích thước KPI nằm ở khối @media 720px bên dưới — khối đó đứng SAU nên thắng.) */
+  #tab-cls .kpi .prog { display: none; }
+}
+
+/* ===== TAB CĐHA — khối "CẦN CAN THIỆP NGAY" (đứng NGOÀI phân cấp khu, xếp theo mức nặng) ===== */
+.cls-hot { margin: 4px 0 26px; padding: 14px 14px 16px; border: 1px solid #fecaca;
+  border-radius: 14px; background: linear-gradient(180deg, #fff5f5 0%, #fff 60%); }
+.cls-hot .khu-head { margin-bottom: 12px; }
+.khu-tag.hot-tag { background: var(--red); }
+/* Thẻ nằm ngoài phân cấp → phải tự nói vị trí (Khu · Tầng), nếu không thì biết nặng mà không biết đi đâu */
+.room-noi { font-size: 12px; font-weight: 600; color: var(--muted); margin: -2px 0 6px; }
+/* Tiêu đề phần tra cứu — tách bạch với phần hành động ở trên */
+.cls-rest-title { font-size: 16px; font-weight: 800; color: var(--ink); margin: 26px 0 12px;
+  padding-top: 16px; border-top: 2px solid var(--line); }
+.cls-rest-title .sub2 { font-size: 13px; font-weight: 500; color: var(--muted); margin-left: 8px; }
+/* Dòng gọn có mức: phòng cần theo dõi vẫn nhận biết được mà không phình thành thẻ */
+.room-calm.amber { border-color: #fed7aa; background: #fffbeb; }
+.room-calm.amber .rc-dot { background: var(--amber); }
+.room-calm.amber .rc-wait { color: #b45309; font-weight: 700; }
+
+/* KHU = TÒA NHÀ thật của HIS (Nhà M · Nhà N · Nhà BC · Nhà A · Nhà E · Nhà H · Nhà M1 · BV Từ Dũ).
+   Class do khuSlug() sinh: "Nhà M" → .khu-nha-m → tag .khu-nha-m-tag.
+   Brand Kit: xanh Từ Dũ chủ đạo; HỒNG chỉ nhấn 1 tòa (Nhà N — khu khám phụ sản lớn nhất) để giữ
+   tỉ lệ hồng ≤10%. Tòa còn lại dùng các sắc xanh/xám → không cạnh tranh với màu RAG cảnh báo. */
+.khu-tag { font-size: 12px; }
+.khu-tag-M, .khu-nha-m-tag   { background: var(--brand-blue); }
+/* Nhà KM (dãy KM0/KM1 — Phụ khoa + KHGD) đứng cạnh Nhà M (dãy M1 — CSTS + khám trẻ) trên cùng màn:
+   cùng họ xanh cho biết hai tòa liền địa bàn, nhưng KHÁC sắc để mắt không đọc nhầm thành một khu. */
+.khu-nha-km-tag              { background: var(--brand-blue-dark); }
+.khu-nha-m1-tag              { background: var(--brand-blue); opacity: .78; }
+.khu-tag-N, .khu-nha-n-tag   { background: var(--brand-pink); }
+.khu-nha-bc-tag              { background: var(--brand-blue-dark); }
+.khu-nha-a-tag               { background: #0e7490; }   /* xanh cyan đậm — khoa CĐHA (X-quang/MRI) */
+.khu-nha-e-tag               { background: #3f6212; }   /* xanh olive — sơ sinh / ung bướu */
+.khu-nha-h-tag               { background: #4c1d95; }   /* tím than — khu H */
+.khu-benh-vien-tu-du-tag     { background: var(--gray); }
+.khu-tag-khac, .khu-chua-ro-toa-tag { background: var(--gray); }
+.khu-title { font-size: 18px; font-weight: 800; margin: 0; color: var(--ink); }
+.khu-sum { font-size: 13.5px; color: var(--muted); }
+.khu-sum b { color: var(--ink); }
+.khu-sum .k-red { color: var(--red); }
+.khu-sum .k-amber { color: var(--amber); }
+.all-clear-box.small { font-size: 13.5px; padding: 10px 14px; font-weight: 600; }
+/* ----- Tầng KHOA (trong khu): dải màu trái theo mức nặng + dòng tổng riêng ----- */
+.khoa-block { margin: 14px 0 0; padding: 0 0 2px 12px; border-left: 3px solid var(--line); }
+.khoa-block.khoa-red { border-left-color: var(--red); }
+.khoa-block.khoa-amber { border-left-color: var(--amber); }
+.khoa-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 8px; }
+.khoa-name { font-size: 14.5px; font-weight: 700; margin: 0; color: var(--brand-blue-dark); }
+/* Chip cụm trong khoa lớn (Tầng 1/2/3 · Khám VIP) — VIP dùng hồng nhấn của brand */
+.khoa-chip { display: inline-block; margin-left: 7px; font-size: 11.5px; font-weight: 700; letter-spacing: .2px;
+  color: var(--brand-blue-dark); background: #eef4fb; border: 1px solid #d6e4f2; border-radius: 999px; padding: 1px 9px; }
+.khoa-chip.vip { color: #9d174d; background: #fdf2f8; border-color: #fbcfe8; }
+/* Chip NGOẠI TRÚ — giữ lại thông tin ngoại/nội trú sau khi KHU đổi sang tòa nhà. Xám nhạt, trung
+   tính: đây là NHÃN PHÂN LOẠI, không phải cảnh báo → không được tranh màu với RAG. */
+.khoa-chip.nt { color: #475569; background: #f1f5f9; border-color: #e2e8f0; font-weight: 600; }
+.khoa-sum { font-size: 12.5px; color: var(--muted); }
+.khoa-sum b { color: var(--ink); }
+.khoa-sum .k-red { color: var(--red); }
+.khoa-sum .k-amber { color: var(--amber); }
+.khoa-block .calm-list { margin-top: 8px; }
+/* (Đã bỏ nút "Ẩn/Hiện N phòng còn lại" — user chốt 2026-07-13: phòng đang ổn LUÔN hiện thẳng,
+   phải bấm mới thấy là giấu mất phòng, mắt không quét được cả khoa trong 1 lần nhìn.) */
+/* Khối "đang ổn" — dòng gọn 1 hàng, giảm tải thị giác */
+.calm-wrap { margin-top: 14px; }
+.calm-title { font-size: 13px; font-weight: 700; color: #166534; margin-bottom: 8px; }
+.calm-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 14px;
+}
+.room-calm {
+  display: flex; align-items: center; gap: 8px; background: #fff;
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; font-size: 13.5px;
+}
+.room-calm .rc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex: none; }
+.room-calm .rc-name { font-weight: 600; }
+.room-calm .rc-wait { color: var(--muted); }
+.room-calm .rc-sub { color: var(--gray); font-size: 12px; margin-left: auto; }
+.all-clear-box { background: var(--green-bg); border: 1px solid #bbf7d0; color: #166534;
+  border-radius: 12px; padding: 16px 18px; font-weight: 700; font-size: 15px; }
+.room {
+  background: #fff; border-radius: 12px; padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06); border-top: 5px solid var(--line);
+}
+.room.red { border-top-color: var(--red); background: var(--red-bg); }
+.room.amber { border-top-color: var(--amber); background: var(--amber-bg); }
+.room.green { border-top-color: var(--green); background: var(--green-bg); }
+.room.gray { border-top-color: var(--gray); background: var(--gray-bg); opacity: .75; }
+.room .name { font-weight: 700; font-size: 17px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.room .rank { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.room .rstat { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px; }
+.room .rstat.red { color: #fff; background: var(--red); }
+.room .rstat.amber { color: #fff; background: var(--amber); }
+/* Nút thu gọn phòng chưa hoạt động (chiếm trọn 1 hàng lưới) */
+.rooms-toggle { grid-column: 1 / -1; }
+#rooms-idle-toggle { width: 100%; text-align: left; background: #fff; border: 1px dashed var(--line);
+  border-radius: 10px; padding: 12px 14px; font-size: 14px; font-weight: 600; color: #475569; cursor: pointer; }
+#rooms-idle-toggle:hover { background: #f1f5f9; }
+#rooms-idle-toggle .caret { display: inline-block; width: 14px; color: var(--muted); }
+/* Dòng "đang chờ": flex baseline — số + nhãn là 1 KHỐI nowrap (không tách "đang"/"chờ");
+   pill xu hướng nếu chật thì xuống NGUYÊN dòng, không đẩy nhãn gãy giữa chừng. */
+.room .wait { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 6px 0 2px; }
+.room .wait .wlead { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.room .wait .wnum { font-size: 46px; font-weight: 800; line-height: 1; }
+.room.red .wait .wnum { color: var(--red); } .room.amber .wait .wnum { color: var(--amber); }
+.room.green .wait .wnum { color: var(--green); } .room.gray .wait .wnum { color: var(--gray); }
+.room .wait small { font-size: 14px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.room .wait .qtrend { margin-left: 0; vertical-align: baseline; }
+.room .bar { height: 8px; border-radius: 4px; background: #e2e8f0; overflow: hidden; margin: 8px 0; }
+.room .bar > i { display: block; height: 100%; }
+.room.red .bar > i { background: var(--red); } .room.amber .bar > i { background: var(--amber); }
+.room.green .bar > i { background: var(--green); } .room.gray .bar > i { background: var(--gray); }
+/* 3 ô mini-stat đều nhau (nhãn nhỏ trên · số đậm dưới) — sạch, không emoji, quét nhanh */
+.room .detail { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin-top: 2px; font-size: 13px; color: #334155; }
+/* "Đã khám" = bối cảnh (việc phòng ĐÃ giải quyết), không phải việc cần làm → mờ hơn 2 ô hàng đợi,
+   không bao giờ tô nút thắt. Tab CĐHA chỉ có 2 ô → trả về lưới 2 cột. */
+.room .detail .d-cell.done .d-lbl, .room .detail .d-cell.done b { color: var(--muted); }
+.room .detail .d-cell.done b { font-size: 15px; font-weight: 700; }
+#tab-cls .room .detail { grid-template-columns: repeat(2, 1fr); }
+/* Cảnh báo hành động trên thẻ (tắc / sắp quá tải) — tín hiệu cần can thiệp NGAY */
+.room .room-alert { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
+.room .ra-badge { font-size: 11.5px; font-weight: 800; color: #fff; background: var(--red);
+  border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.room .ra-badge.eta { background: var(--amber); }
+body.tv .room .ra-badge { font-size: 15px; padding: 3px 12px; }
+/* Lệnh RIÊNG cho phòng (theo loại tắc) — CHIP CTA nổi trên nền thẻ (nền thẻ đã tô RAG nhạt
+   → chip TRẮNG viền màu để bật lên là "việc cần làm"). Giữ RAG, không dùng brand-blue cho trạng thái. */
+.room .room-do { margin-top: 10px; font-size: 13px; font-weight: 800; display: block;
+  background: #fff; border: 1.5px solid; border-radius: 9px; padding: 7px 11px; }
+.room.red .room-do { color: var(--red); border-color: var(--red); }
+.room.amber .room-do { color: var(--amber); border-color: var(--amber); }
+body.tv .room .room-do { font-size: 17px; padding: 9px 14px; }
+/* Dòng BÁC SĨ trực phòng — THÔNG TIN, không phải nút hành động → nền mờ + icon, KHÔNG viền
+   button-like (viền màu RAG dành cho cảnh báo). Tên dài tự xuống dòng gọn. */
+.room .room-doc { margin-top: 10px; font-size: 13px; font-weight: 700; display: flex;
+  align-items: baseline; gap: 6px; color: var(--ink); line-height: 1.3;
+  background: rgba(255,255,255,.55); border-radius: 8px; padding: 6px 10px; }
+.room .room-doc b { font-weight: 800; }
+/* Số BN bác sĩ chính đã khám tại phòng tính tới hiện tại (user chốt 2026-07-16) — đặt sát tên để
+   đọc "ai · làm được bao nhiêu" trong 1 nhịp; nhạt hơn tên vì là bối cảnh, không phải việc cần làm. */
+.room .room-doc .doc-luot { margin-left: auto; font-weight: 700; color: var(--muted);
+  font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.room .room-doc.none { color: var(--muted); font-weight: 600; font-style: italic; }
+body.tv .room .room-doc { font-size: 16px; padding: 8px 12px; }
+/* CHI TIẾT bác sĩ theo buổi — GẬP mặc định để thẻ không phình (kỷ luật v3, xem CLAUDE.md §12.5).
+   Dòng .room-doc phía trên chỉ nói nhân lực HIỆN TẠI; mở khối này mới thấy cả buổi sáng đã ai làm. */
+.room .bs-detail { margin-top: 6px; font-size: 12.5px; }
+.room .bs-detail > summary { cursor: pointer; list-style: none; color: var(--brand-blue-dark);
+  font-weight: 700; padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,.55);
+  min-height: 32px; display: flex; align-items: center; }   /* vùng chạm thoải mái trên mobile */
+.room .bs-detail > summary::-webkit-details-marker { display: none; }
+.room .bs-detail > summary::after { content: "▾"; margin-left: auto; font-size: 11px; }
+.room .bs-detail[open] > summary::after { content: "▴"; }
+.room .bs-buoi { margin-top: 6px; background: rgba(255,255,255,.55); border-radius: 8px; padding: 6px 10px; }
+.room .bs-buoi-h { display: flex; align-items: baseline; gap: 8px; font-weight: 800; color: var(--ink);
+  font-size: 12px; padding-bottom: 4px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.room .bs-buoi-n { margin-left: auto; font-weight: 600; color: var(--muted); font-size: 11.5px; }
+.room .bs-row { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; line-height: 1.35; }
+.room .bs-ten { font-weight: 600; color: var(--ink); flex: 1; min-width: 0; }
+.room .bs-luot { font-weight: 800; color: var(--ink); white-space: nowrap; }
+.room .bs-gio { color: var(--muted); font-size: 11.5px; white-space: nowrap;
+  font-variant-numeric: tabular-nums; }   /* giờ thẳng cột → mắt dò nhanh */
+/* Mục "Trả kết quả": người CHỈ trả/xem kết quả, KHÔNG tính vào số BS trên thẻ (xem CLAUDE.md §6a).
+   Làm mờ + tách khỏi 2 mục buổi → mắt không cộng nhầm vào nhân lực khám. */
+.room .bs-buoi.bs-kq { background: rgba(255,255,255,.32); opacity: .82; }
+.room .bs-buoi.bs-kq .bs-buoi-h { color: var(--muted); }
+.room .bs-note { font-size: 11px; color: var(--muted); font-style: italic; margin-bottom: 3px; }
+body.tv .room .bs-detail { font-size: 15px; }
+/* Vị trí (khoa · tầng) dưới tên thẻ — thẻ nay gom trong khu nên cần biết tầng để đi đúng lầu. */
+.room .room-loc { font-size: 11.5px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+.room .detail .d-cell { display: flex; flex-direction: column; line-height: 1.25;
+  background: rgba(255,255,255,.55); border-radius: 7px; padding: 5px 8px; }
+.room .detail .d-lbl { font-size: 11px; color: var(--muted); font-weight: 600; }
+.room .detail b { color: var(--ink); font-size: 16px; font-weight: 800; }
+.room .detail b.z0 { color: #cbd5e1; font-weight: 700; }
+.room .detail .z0 { color: #cbd5e1; font-size: 16px; }
+/* NÚT THẮT chủ đạo (đợi khám HOẶC đợi kết luận lớn hơn) — tô nổi để mắt nối số → lệnh điều phối. */
+.room .detail .d-cell.bottleneck { background: #fff; }
+.room.red   .detail .d-cell.bottleneck { box-shadow: inset 0 0 0 1.5px var(--red); }
+.room.amber .detail .d-cell.bottleneck { box-shadow: inset 0 0 0 1.5px var(--amber); }
+.room.red   .detail .d-cell.bottleneck b, .room.red   .detail .d-cell.bottleneck .d-lbl { color: var(--red); }
+.room.amber .detail .d-cell.bottleneck b, .room.amber .detail .d-cell.bottleneck .d-lbl { color: var(--amber); }
+.room .detail .d-cell.bottleneck b { font-size: 19px; }
+/* Ước tính "tới lượt" — đặt ngay dưới số đang chờ (đọc patient-experience trong 1 nhịp). */
+.room .wait-sub { margin: 0 0 4px; }
+.room .wait-eta { display: inline-block; font-size: 12.5px; font-weight: 700; color: #475569;
+  background: rgba(255,255,255,.7); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; }
+body.tv .room .wait-eta { font-size: 16px; padding: 2px 12px; }
+/* Dòng phụ: bỏ khám/chưa lĩnh — thứ yếu, mờ, chỉ hiện khi có */
+.room .detail-sub { display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: 12px;
+  color: var(--muted); margin-top: 6px; padding-top: 5px; border-top: 1px dashed var(--line); }
+
+/* Xu hướng (thứ yếu — thu gọn mặc định) */
+.trend { padding: 4px 24px 24px; }
+.trend h2 { font-size: 18px; }
+.trend-toggle { background: none; border: 0; color: var(--brand-blue); font-size: 14px;
+  font-weight: 600; cursor: pointer; padding: 8px 0; }
+.trend-toggle:hover { text-decoration: underline; }
+.trend-toggle .caret { display: inline-block; width: 14px; }
+.trend-grid[hidden] { display: none; }   /* [hidden] phải thắng mọi display */
+/* Headline insight + chú thích thang đo chung */
+.trend-headline { font-size: 14px; color: var(--ink); margin: 2px 0 12px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.trend-headline .th-up { color: var(--amber); }
+.trend-headline .th-down { color: var(--green); }
+.trend-headline .th-top { color: var(--brand-blue-dark); }
+.trend-headline .th-sub { color: var(--muted); font-weight: 400; font-size: 12.5px; }
+.trend-headline .trend-scalenote { font-size: 12px; color: var(--muted); font-weight: 400;
+  display: inline-flex; align-items: center; gap: 5px; margin-left: auto; }
+.trend-headline .thl { display: inline-block; width: 14px; height: 0; border-top: 2px dashed; vertical-align: middle; }
+.trend-headline .thl.over { border-color: var(--red); }
+.trend-headline .thl.busy { border-color: var(--amber); }
+
+/* ===== DANH SÁCH ĐỘNG LƯỢNG — 1 hàng/phòng (sparkline inline + Δ + đang chờ) ===== */
+/* Giới hạn bề rộng → sparkline không bị kéo phẳng trên màn rộng (giữ độ dốc đọc được) */
+#trend { max-width: 1060px; }
+/* Bộ chọn kỳ SO SÁNH LỊCH SỬ (chỉ hiện khi có dữ liệu) */
+.trend-compare { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.trend-compare .tc-lbl { font-size: 13px; color: var(--muted); font-weight: 600; }
+.trend-compare .cmpbtn { background: #fff; border: 1px solid var(--line); border-radius: 7px;
+  padding: 5px 12px; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; }
+.trend-compare .cmpbtn:hover { background: var(--brand-blue-50); }
+.trend-compare .cmpbtn.active { background: var(--brand-blue); color: #fff; border-color: var(--brand-blue); }
+/* nhãn "vs kỳ trước" dưới Δ */
+.tl-vs { display: block; font-size: 10.5px; font-weight: 700; margin-top: 1px; }
+.tl-vs.up { color: var(--amber); } .tl-vs.down { color: var(--green); } .tl-vs.flat { color: var(--muted); }
+.trend-scalenote .thl.cmp { border-top: 2px dashed #9aa6b2; }
+.trend-list { background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06); overflow: hidden; }
+.tline { display: grid; grid-template-columns: 1fr 154px 60px; align-items: center;
+  gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--line); }
+.tline:last-child { border-bottom: 0; }
+/* header bảng = xanh brand (đồng bộ bảng CLS, thêm nhận diện Từ Dũ) */
+.tline.thead { background: var(--brand-blue-dark); padding: 8px 16px; font-size: 11.5px; font-weight: 700;
+  color: #eaf3fa; border-bottom: 2px solid var(--brand-pink); }
+.tline.thead .tl-spark { display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #cfe3f2; }
+.tline.thead .tl-h-mid { color: #9cc4e0; font-weight: 600; }
+.tline.thead .tl-delta { display: block; text-align: right; }
+.tline.thead .tl-wait-cell { text-align: center; font-size: 11.5px; font-weight: 700; color: #cfe3f2; }
+.tline.thead .tl-now { text-align: right; font-size: 11.5px; font-weight: 700; color: #eaf3fa; }
+/* group header (Đang phình / Đang rút) — 1 dòng nhãn nhóm */
+.tline.grouphdr { display: block; grid-column: 1 / -1; padding: 6px 16px; font-size: 11.5px;
+  font-weight: 800; letter-spacing: .3px; border-bottom: 1px solid var(--line); }
+.tline.grouphdr.up { color: #92400e; background: var(--amber-bg); }
+.tline.grouphdr.down { color: #166534; background: var(--green-bg); }
+.tline.grouphdr.hot { color: #991b1b; background: var(--red-bg); }
+.tline.grouphdr.climb { color: #92400e; background: var(--amber-bg); }
+/* ⭐ Nền hàng theo MỨC TẢI (red/amber/calm), KHÔNG theo hướng — phòng quá tải luôn nổi
+   dù đang rút (giải lỗi phòng nóng-nhưng-giảm bị chìm). Viền trái = màu mức nguy. */
+.tline.red { background: #fff7f4; border-left: 3px solid var(--red); padding-left: 13px; }
+.tline.amber { background: #fffdf6; border-left: 3px solid var(--amber); padding-left: 13px; }
+.tline.calm { border-left: 3px solid transparent; padding-left: 13px; }
+.tline.okline { display: block; grid-column: 1 / -1; padding: 12px 16px; font-size: 13px;
+  font-weight: 700; color: #166534; background: var(--green-bg); }
+.tl-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px;
+  white-space: nowrap; overflow: hidden; }
+.tl-name > span { display: flex; flex-direction: column; gap: 2px; overflow: hidden; text-overflow: ellipsis; }
+.tl-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ngoại lệ TẮC — tín hiệu "cần người ngay" mạnh nhất (đỏ, nổi cạnh tên) */
+.tl-stall { flex: none; color: #fff; background: var(--red); border-radius: 999px; padding: 1px 8px;
+  font-size: 11px; font-weight: 800; }
+/* badge số ưu tiên xử lý (xanh brand) */
+.tl-rank { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--brand-blue);
+  color: #fff; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center;
+  justify-content: center; }
+.tl-eta { color: #fff; background: var(--red); border-radius: 999px; padding: 1px 7px;
+  font-size: 10px; font-weight: 800; align-self: flex-start; }
+.tl-spark { position: relative; }
+.tl-spark svg { width: 100%; height: 40px; display: block; }
+.tl-peak { position: absolute; right: 3px; bottom: 0; font-size: 9.5px; color: #b6c2d0; font-weight: 600;
+  background: rgba(255,255,255,.7); padding: 0 3px; border-radius: 4px; }
+/* XU HƯỚNG dạng chữ (1 cụm rõ nghĩa thay cột số "Cả ca ±N" mơ hồ) */
+.tl-delta { text-align: right; }
+.tl-trend { font-weight: 700; font-size: 13px; white-space: nowrap; }
+.tl-delta.up   .tl-trend { color: var(--red); }     /* đang tăng = cảnh báo */
+.tl-delta.cool .tl-trend { color: var(--amber); }   /* giảm nhưng còn đông */
+.tl-delta.down .tl-trend { color: var(--green); }   /* đang giảm = đỡ dần */
+.tl-delta.flat .tl-trend { color: var(--muted); }
+.tl-now { text-align: right; font-weight: 800; font-size: 20px; line-height: 1;
+  font-variant-numeric: tabular-nums; color: var(--ink); }
+.tline.red .tl-now { color: var(--red); } .tline.amber .tl-now { color: var(--amber); }
+.tl-now small { font-size: 10px; font-weight: 600; color: var(--muted); margin-left: 1px; }
+
+/* #4/#7 — cột CHỜ ƯỚC TÍNH (Little's Law) tô theo SLA: đạt(xanh)/theo dõi(cam)/vượt(đỏ) */
+.tl-wait-cell { text-align: center; }
+.tl-wait { display: inline-block; font-size: 12.5px; font-weight: 800; white-space: nowrap;
+  padding: 1px 7px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.tl-wait.ok   { color: #166534; background: var(--green-bg); }
+.tl-wait.warn { color: #92400e; background: var(--amber-bg); }
+.tl-wait.over { color: #991b1b; background: var(--red-bg); }
+.tl-wait.none { color: var(--muted); background: transparent; font-weight: 600; }
+
+/* #3 — cảnh báo MỐC THIẾU (dữ liệu không trọn → đừng tin tuyệt đối) */
+.tl-gap { color: #92400e; background: var(--amber-bg); border-radius: 999px; padding: 1px 6px;
+  font-size: 10px; font-weight: 700; align-self: flex-start; }
+
+/* #6 — VIEW TỔNG HỆ THỐNG: tổng đang chờ toàn cơ sở + đà + sparkline tổng */
+.trend-system { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  background: var(--brand-blue-50); border: 1px solid var(--brand-blue-100, #cfe3f2);
+  border-radius: 12px; padding: 10px 16px; margin-bottom: 12px; }
+.trend-system .ts-lbl { display: block; font-size: 12px; color: var(--muted); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .3px; }
+.trend-system .ts-row { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+.trend-system .ts-val { font-size: 26px; font-weight: 800; color: var(--brand-blue-dark);
+  font-variant-numeric: tabular-nums; line-height: 1; }
+.trend-system .ts-dir { font-size: 13px; font-weight: 700; }
+.trend-system .ts-dir.up { color: var(--red); } .trend-system .ts-dir.down { color: var(--green); }
+.trend-system .ts-dir.flat { color: var(--muted); }
+.trend-system .ts-sub { font-size: 12px; color: var(--muted); font-weight: 500; }
+.trend-system .ts-spark { flex: none; width: 180px; }
+.trend-system .ts-spark svg { width: 100%; height: 40px; display: block; }
+
+/* ===== SMALL-MULTIPLES SPARKLINE (panel xu hướng) — khai thác HÌNH DẠNG theo thời gian ===== */
+.spark-note { font-size: 12px; color: var(--muted); margin: 0 0 12px; display: flex;
+  flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.spark-note .thl { display: inline-block; width: 16px; height: 0; border-top: 2px dashed; vertical-align: middle; }
+.spark-note .thl.over { border-color: var(--red); }
+.spark-note .thl.busy { border-color: var(--amber); }
+.spark-grouphd { font-size: 13.5px; font-weight: 800; margin: 14px 0 8px; display: flex;
+  align-items: center; gap: 7px; white-space: nowrap; }
+.spark-grouphd:first-child { margin-top: 0; }
+.spark-grouphd .gh-n { font-weight: 800; color: #fff; border-radius: 999px; padding: 1px 9px;
+  font-variant-numeric: tabular-nums; flex: none; }
+.spark-grouphd.g-up { color: var(--amber); } .spark-grouphd.g-up .gh-n { background: var(--amber); }
+.spark-grouphd.g-down { color: var(--green); } .spark-grouphd.g-down .gh-n { background: var(--green); }
+body.tv .spark-grouphd { font-size: 18px; }
+.spark-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 10px; }
+.spark-mini { background: #fff; border: 1px solid var(--line); border-left: 3px solid var(--line);
+  border-radius: 10px; padding: 9px 11px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.spark-mini.red { border-left-color: var(--red); background: #fff7f4; }
+.spark-mini.amber, .spark-mini.climb { border-left-color: var(--amber); background: #fffdf6; }
+.spark-mini.calm { border-left-color: var(--green); }
+.sm-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.sm-name { font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sm-now { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; flex: none; }
+.spark-mini.red .sm-now { color: var(--red); }
+.spark-mini.amber .sm-now, .spark-mini.climb .sm-now { color: var(--amber); }
+.spark-mini.calm .sm-now { color: var(--green); }
+.sm-svg { width: 100%; height: 38px; display: block; margin: 5px 0 3px; }
+.sm-svg .thl-over { stroke: var(--red); stroke-width: 1; stroke-dasharray: 2 2; opacity: .5; vector-effect: non-scaling-stroke; }
+.sm-svg .thl-busy { stroke: var(--amber); stroke-width: 1; stroke-dasharray: 2 2; opacity: .45; vector-effect: non-scaling-stroke; }
+.sm-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 18px; }
+.smd { font-size: 11.5px; font-weight: 700; }
+.smd.up { color: var(--amber); } .smd.cool { color: var(--amber); }
+.smd.down { color: var(--green); } .smd.flat { color: var(--muted); }
+
+/* DÒNG GỌN — nhóm "đang hạ" (tham khảo, không cần hành động): tên · sparkline nhỏ · số · bối cảnh đỉnh */
+.spark-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.spark-row { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px;
+  background: #fff; border: 1px solid var(--line); border-left: 3px solid var(--line);
+  border-radius: 8px; padding: 5px 10px; }
+.spark-row.red { border-left-color: var(--red); } .spark-row.amber { border-left-color: var(--amber); }
+.spark-row.calm { border-left-color: var(--green); }
+.sr-name { font-weight: 700; font-size: 13px; white-space: nowrap; }
+.sr-spark { width: 100%; min-width: 36px; height: 22px; display: block; }
+.sr-now { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.spark-row.red .sr-now { color: var(--red); } .spark-row.amber .sr-now { color: var(--amber); }
+.spark-row.calm .sr-now { color: var(--green); }
+.sr-ctx { font-size: 11px; font-weight: 700; white-space: nowrap; }
+.sr-ctx.down { color: var(--green); } .sr-ctx.flat { color: var(--muted); }
+@media (max-width: 720px) { .spark-rows { grid-template-columns: 1fr; } }
+body.tv .spark-rows { grid-template-columns: repeat(3, 1fr); }
+body.tv .sr-name { font-size: 16px; } body.tv .sr-now { font-size: 22px; } body.tv .sr-spark { height: 30px; }
+.sm-badge { font-size: 10px; font-weight: 800; color: #fff; border-radius: 999px; padding: 1px 7px; background: var(--red); }
+body.tv .spark-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+body.tv .sm-name { font-size: 17px; } body.tv .sm-now { font-size: 28px; } body.tv .sm-svg { height: 48px; }
+
+/* chú thích thang đo (1 dòng dưới danh sách) */
+.trend-scalenote { font-size: 12px; color: var(--muted); margin: 8px 0 0;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.trend-scalenote .thl { display: inline-block; width: 14px; height: 0; border-top: 2px dashed; vertical-align: middle; }
+.trend-scalenote .thl.over { border-color: var(--red); }
+.trend-scalenote .thl.busy { border-color: var(--amber); }
+
+/* dòng gom phòng đã hết chờ */
+.trend-cleared { margin-top: 12px; font-size: 13px; color: #166534; display: flex;
+  flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.trend-cleared .tc-chip { background: var(--green-bg); border: 1px solid #bbf7d0; color: #166534;
+  border-radius: 999px; padding: 2px 10px; font-size: 12.5px; font-weight: 600; }
+.trend-cleared .tc-chip small { color: #4d9e6a; font-weight: 500; }
+/* nhãn nhóm trong dòng gom (Nhẹ/đang hạ · đã hết chờ) */
+.trend-cleared .tcl-lbl { font-weight: 700; color: var(--muted); }
+.trend-cleared .tcl-lbl:nth-of-type(2) { margin-left: 10px; }
+/* chip phòng còn ít chờ (chưa về 0) — vàng nhạt để khác phòng đã hết (xanh) */
+.trend-cleared .tc-chip.low { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.trend-cleared .tc-chip.low b { color: #b45309; }
+
+footer { padding: 16px 24px 32px; color: var(--muted); font-size: 12px; }
+.empty { color: var(--muted); padding: 24px; text-align: center; }
+
+/* Tabs */
+/* ⚠️ Ô tab RỘNG BẰNG NHAU và KHÔNG co theo nội dung (`minmax(200px, max-content)`), vì tab
+   "Phòng · Giường" dẫn sang giuong.html — trang đó không có huy hiệu số. Nếu bề rộng chạy theo
+   nội dung thì bấm qua lại, ô tab tự dịch ngang ~70px NGAY DƯỚI NGÓN TAY. Đo được, không đoán. */
+.tabs {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, max-content);
+  justify-content: start; gap: 4px; padding: 0 24px; background: var(--brand-blue-dark);
+}
+.tabs .tab {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  background: transparent; color: #cfe3f2; border: 0; cursor: pointer;
+  padding: 12px 20px; font-size: 15px; font-weight: 600;
+  border-bottom: 3px solid transparent;
+  transition: background .15s, color .15s;
+}
+.tab-ico { font-size: 16px; line-height: 1; }
+.tab-txt { white-space: nowrap; }
+.tabs .tab:hover { color: #fff; }
+.tabs .tab.active { color: #fff; border-bottom-color: var(--brand-pink); background: rgba(255,255,255,.10); }
+/* Huy hiệu số việc cần can thiệp trên tab */
+/* Huy hiệu KHÔNG chiếm chỗ trong dòng (absolute) → chữ tab luôn nằm GIỮA ô, không bị đẩy lệch.
+   Tab dẫn sang giuong.html không có huy hiệu; để huy hiệu đẩy chữ thì bấm qua lại chữ nhảy ngang. */
+.tab-badge { position: absolute; top: 5px; right: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+  font-size: 12px; font-weight: 800; color: #fff;
+  border: 1.5px solid var(--brand-blue-dark); }
+.tab-badge.red { background: var(--red); }
+.tab-badge.amber { background: var(--amber); }
+.tab-badge[hidden] { display: none; }
+/* Thẻ dẫn sang trang khác (giuong.html) — dùng chung khuôn `.tab`, chỉ bỏ gạch chân của <a> */
+.tabs .tab-link { text-decoration: none; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ===== Tab CĐHA-TDCN ===== */
+/* Bảng CLS */
+.cls-wrap { padding: 12px 24px 24px; }
+.cls-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cls-wrap h2 { font-size: 18px; margin: 8px 0; }
+.cls-wrap .sub2 { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.cls-sort { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.cls-sort .sortbtn { background: #fff; border: 1px solid var(--line); border-radius: 7px;
+  padding: 6px 12px; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; }
+.cls-sort .sortbtn.active { background: var(--brand-blue); color: #fff; border-color: var(--brand-blue); }
+.cls-table { width: 100%; border-collapse: collapse; background: #fff;
+  border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); font-size: 14px; }
+.cls-table th, .cls-table td { padding: 9px 12px; text-align: right; border-bottom: 1px solid var(--line); }
+.cls-table th { background: var(--brand-blue-dark); color: #eaf3fa; font-weight: 700; }
+.cls-table th.name, .cls-table td.name { text-align: left; }
+.cls-table th.prog, .cls-table td.prog { text-align: left; width: 42%; }
+.cls-table td.name { font-weight: 600; color: var(--ink); max-width: 340px; }
+.cls-table tbody tr:hover { background: #f1f5f9; }
+.cls-table tr.amber { background: var(--amber-bg); }
+.cls-table tr.red { background: var(--red-bg); }
+.cls-table tr.red td.name { color: var(--red); }
+.cls-table .num0 { color: #cbd5e1; }
+.cls-table td.bl { font-weight: 800; color: var(--amber); white-space: nowrap; }
+.cls-table tr.red td.bl { color: var(--red); }
+.cls-table td.bl b { font-size: 17px; }
+/* Dòng phụ loại tắc ngay dưới số (chứa thành phần chờ/làm → không cần lặp ở ô khác) */
+.cls-table .bl-q { display: block; font-weight: 500; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+/* "Tổng" body = BỐI CẢNH (nhẹ, xám) để số quyết định "Cần xử lý" nổi; footer giữ đậm. */
+.cls-table tbody .tong, .cls-table .done-group .tong { font-weight: 600; color: var(--muted); }
+.cls-table th.th-tong { color: #bcd6ea; font-weight: 600; }
+.cls-table tfoot td { background: var(--brand-blue-50); font-weight: 800; border-top: 2px solid #bcdcef; }
+.cls-table tfoot .tong { color: var(--brand-blue); }
+/* thanh tiến độ TỈ LỆ (full-width) trong bảng */
+.stack { display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: #eef2f6; width: 100%; }
+.stack > i { display: block; height: 100%; }
+.s-cho { background: var(--amber); }
+.s-lam { background: var(--brand-blue); }   /* "đang làm" = xanh azure brand (một hệ xanh duy nhất) */
+.s-kq  { background: var(--green); }
+/* Chú số gọn dưới thanh tiến độ (gộp 4 cột số cũ vào 1 ô) */
+.pc-row { margin-top: 4px; font-size: 12px; color: var(--muted); line-height: 1.3; }
+.pc { font-weight: 600; }
+.pc-cho { color: var(--amber); }
+.pc-lam { color: var(--brand-blue-dark); }   /* khớp hệ xanh azure brand */
+.pc-kq  { color: var(--green); }
+.pc-bq  { color: var(--gray); }
+.pc-dot { color: var(--line); margin: 0 5px; }
+.cls-table .th-sub { display: block; font-weight: 400; font-size: 11px; color: #94a3b8; }
+/* Legend đặt TRÊN bảng (gần nơi dùng) */
+.cls-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 4px 0 10px; font-size: 13px; color: var(--muted); align-items: center; }
+.cls-legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.cls-legend .sw.s-cho { background: var(--amber); }
+.cls-legend .sw.s-lam { background: var(--brand-blue); }
+.cls-legend .sw.sw-done { background: #cbd5e1; }   /* đã xong = xám, khớp thanh v-done */
+.cls-legend .leg-lead { font-weight: 600; color: #475569; }
+.cls-legend .leg-sep { color: var(--line); }
+.cls-legend .mk { font-size: 11px; vertical-align: 1px; margin-right: 3px; }
+/* Dòng chỉ HƯỚNG đọc (cao = tốt) — chiếm trọn 1 dòng, đứng trước các mốc màu để hiểu ngay */
+.cls-legend .leg-hint { flex-basis: 100%; font-weight: 600; color: #475569; }
+.mk-red { color: var(--red); } .mk-amber { color: var(--amber); }
+/* Marker hình đầu dòng (mù màu vẫn phân biệt được) */
+.cls-table .rmk { font-size: 9px; vertical-align: 2px; margin-right: 2px; }
+/* Progressive disclosure — nút thu gọn dòng đã xong (CLASS, không ID → CLS + PT-TT GIỐNG NHAU) */
+.done-toggle-row td { padding: 0; background: #f8fafc; }
+.done-toggle-row button { width: 100%; text-align: left; background: none; border: 0; cursor: pointer;
+  padding: 11px 12px; font-size: 14px; font-weight: 600; color: #334155; }
+.done-toggle-row button:hover { background: #eef2f6; }
+.done-toggle-row .caret { display: inline-block; width: 14px; color: var(--muted); }
+.done-toggle-row .done-sum { font-weight: 400; color: var(--muted); }
+/* Biến thể "plain" (trạng thái thông suốt): nút đứng riêng, bo góc như khối bảng */
+.done-toggle-row.plain { background: #fff; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.06); overflow: hidden; }
+.done-toggle-row.plain button { color: var(--muted); }
+.svc-done-table { margin-top: 10px; }
+.done-group[hidden] { display: none; }
+
+/* ===== Bảng dịch vụ DẠNG NHÓM (accordion theo loại kỹ thuật — gom siêu âm/X-quang/nội soi…) ===== */
+.svc-allclear { background: var(--green-bg); color: #166534; font-weight: 600;
+  padding: 12px 16px; border-radius: 10px; margin-bottom: 10px; }
+.sg-tools { display: flex; align-items: center; gap: 9px; padding: 0 2px 10px; font-size: 13px; color: var(--muted); }
+.sg-tools .sg-tot-lbl { margin-right: auto; }
+.sg-tools button { background: #fff; border: 1px solid var(--line); border-radius: 7px;
+  padding: 5px 11px; font-size: 13px; font-weight: 600; color: var(--brand-blue); cursor: pointer; }
+.sg-tools button:hover { background: var(--brand-blue-50); }
+.sg-tools .sg-dot { color: var(--line); }
+
+.svc-groups { display: flex; flex-direction: column; gap: 10px; }
+.svc-group { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  overflow: hidden; border-left: 5px solid var(--line); }
+.svc-group.amber { border-left-color: var(--amber); }
+.svc-group.red   { border-left-color: var(--red); }
+
+/* Hàng TIÊU ĐỀ nhóm = tín hiệu nhìn-1-lần: caret · icon · tên · #DV · thanh tiến độ · TỒN ĐỌNG · tổng */
+.sg-head { width: 100%; display: grid;
+  grid-template-columns: 16px 24px minmax(0,1fr) auto 240px 70px 56px;
+  align-items: center; gap: 11px; background: none; border: 0; cursor: pointer;
+  padding: 12px 16px; text-align: left; font: inherit; min-height: 54px; }
+.sg-head:hover { background: #f8fafc; }
+.svc-group.amber .sg-head { background: var(--amber-bg); }
+.svc-group.red   .sg-head { background: var(--red-bg); }
+.sg-head .caret { color: var(--muted); font-size: 13px; }
+.sg-ic   { font-size: 18px; text-align: center; }
+.sg-name { font-size: 15.5px; font-weight: 700; color: var(--ink); }
+.sg-n    { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.sg-prog { width: 240px; }
+.sg-bl   { text-align: right; white-space: nowrap; }
+
+/* ===== THANH KHỐI LƯỢNG shared-scale (vtrack/vfill) — độ DÀI = số ca, CHUNG thang ===== */
+/* vtrack = nền cả thang (mốc chung, mép trái thẳng hàng mọi nhóm); vfill = phần có dữ liệu (= số ca). */
+.vtrack { width: 100%; height: 16px; border-radius: 4px; background: #f1f5f9;
+  box-shadow: inset 0 0 0 1px #e8edf3; overflow: hidden; }
+.vfill  { display: flex; height: 100%; min-width: 3px; }
+.vfill > i { display: block; height: 100%; }
+.v-cho  { background: var(--amber); }                /* tồn: chờ tiếp nhận — neo MÉP TRÁI */
+.v-lam  { background: var(--brand-blue); }           /* tồn: đang làm */
+.v-done { background: #cbd5e1; }                     /* đã xong = XÁM (mờ đi để nhóm ùn nổi) */
+/* Nhóm/dòng nghẽn nặng (≥10): tô tồn ĐỎ thay cam để pop đúng mức nguy (alarm khi thật cần) */
+.svc-group.red .v-cho, .svc-row.red .v-cho { background: var(--red); }
+/* Số tồn: tô CAM/ĐỎ CHỈ khi nhóm cần can thiệp (≥5); tồn thấp (1–4) để xám → chống báo động giả. */
+.sg-bl b { font-size: 22px; font-weight: 800; color: var(--muted); }
+.svc-group.amber .sg-bl b { color: var(--amber); }
+.svc-group.red   .sg-bl b { color: var(--red); }
+.sg-bl small { display: block; font-size: 11px; font-weight: 600; color: var(--muted); }
+.sg-ok   { font-size: 13px; font-weight: 700; color: var(--green); }
+.sg-tot  { text-align: right; white-space: nowrap; color: var(--muted); font-weight: 700; font-size: 14px; }
+.sg-tot small { display: block; font-size: 10px; font-weight: 500; }
+
+/* Thân nhóm: từng dịch vụ (grid: tên · tồn · tiến độ · tổng) — thụt lề dưới tiêu đề */
+.sg-body { border-top: 1px solid var(--line); }
+.sg-body[hidden] { display: none; }
+.svc-row { display: grid; grid-template-columns: minmax(0,1fr) 110px 240px 52px;
+  align-items: center; gap: 11px; padding: 9px 16px 9px 30px;
+  border-bottom: 1px solid #f1f5f9; font-size: 13.5px; }
+.svc-row:last-child { border-bottom: 0; }
+.svc-row:hover { background: #f8fafc; }
+.svc-row.amber { background: var(--amber-bg); }
+.svc-row.red   { background: var(--red-bg); }
+.sr-name { color: var(--ink); font-weight: 500; line-height: 1.3; }
+.svc-row.red .sr-name { color: var(--red); }
+.sr-bl   { text-align: right; white-space: nowrap; }
+.sr-bl b { font-size: 15px; font-weight: 800; color: var(--muted); }
+.svc-row.amber .sr-bl b { color: var(--amber); }
+.svc-row.red   .sr-bl b { color: var(--red); }
+.sr-bl small { display: block; font-size: 10.5px; font-weight: 500; color: var(--muted); }
+.sr-bl .num0 { color: #cbd5e1; font-weight: 700; }
+.sr-tot  { text-align: right; color: var(--muted); font-weight: 600; }
+.svc-row .rmk { font-size: 9px; vertical-align: 2px; margin-right: 2px; }
+.cls-table .all-clear { text-align: center; color: #166534; background: var(--green-bg); font-weight: 600; padding: 16px; }
+
+/* Nút công cụ phụ trên header (TV / In) — ICON-ONLY, kín đáo để không tranh thị giác với nội dung */
+.btn-tool { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.30);
+  border-radius: 8px; width: 38px; height: 38px; font-size: 16px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; }
+.btn-tool:hover { background: rgba(255,255,255,.26); }
+
+/* ============================================================
+   CHẾ ĐỘ MÀN HÌNH TƯỜNG (TV) — bật bằng nút 📺 hoặc URL ?tv=1
+   Nhìn từ xa: chữ to, ẩn nút thao tác, tự luân phiên 2 tab.
+   ============================================================ */
+body.tv { font-size: 20px; }
+body.tv #topbar, body.tv #btn-reload, body.tv #btn-tv, body.tv #btn-print,
+body.tv .refresh-status, body.tv .trend, body.tv .cls-sort,
+body.tv .rooms-toggle, body.tv #cls-done-toggle, body.tv .done-toggle-row { display: none !important; }
+body.tv .tabs { pointer-events: none; }            /* tab tự xoay, không cần bấm */
+body.tv header h1 { font-size: 32px; }
+body.tv header .sub { font-size: 18px; }
+body.tv .action-band { font-size: 22px; padding: 18px 24px; }
+body.tv .action-band .ab-ic { font-size: 30px; }
+body.tv .action-band .ab-chip { font-size: 19px; padding: 5px 15px; }
+body.tv .kpi .big { font-size: 50px; }
+body.tv .kpi .lbl { font-size: 18px; }
+body.tv .kpi .sub-metric { font-size: 15px; }
+body.tv .room .name { font-size: 22px; }
+body.tv .room .wait .wnum { font-size: 64px; }
+body.tv .room .detail { font-size: 16px; }
+body.tv .room .detail-sub { font-size: 14px; }
+body.tv .room-calm { font-size: 17px; padding: 10px 15px; }
+body.tv .calm-title { font-size: 17px; }
+body.tv .cls-table { font-size: 18px; }
+body.tv .cls-table th, body.tv .cls-table td { padding: 13px 14px; }
+body.tv .sg-tools { display: none !important; }
+body.tv .svc-group { font-size: 18px; }
+body.tv .sg-name { font-size: 24px; }
+body.tv .sg-bl b { font-size: 36px; }
+body.tv .sg-ic { font-size: 24px; }
+body.tv .svc-row { font-size: 18px; }
+body.tv .tab-badge { min-width: 26px; height: 26px; font-size: 16px; }
+/* Chỉ báo "ĐANG Ở CHẾ ĐỘ TV" (góc dưới) */
+.tv-hud { display: none; }
+body.tv .tv-hud { display: flex; position: fixed; right: 16px; bottom: 14px; z-index: 50;
+  align-items: center; gap: 8px; background: rgba(15,23,42,.82); color: #fff;
+  padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; }
+body.tv .tv-hud .dot { width: 9px; height: 9px; border-radius: 50%; background: #ef4444;
+  animation: pulse 1.6s ease-in-out infinite; }
+
+/* ============================================================
+   IN ẤN — In 1 trang gọn để dán giao ban / gửi nhóm (nút 🖨)
+   Chỉ in TAB ĐANG XEM; ẩn mọi nút/hiệu ứng; nền trắng tiết kiệm mực.
+   ============================================================ */
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { background: #fff; font-size: 11px; }
+  #topbar, .head-right, .tabs, .trend, .cls-sort, .rooms-toggle,
+  #cls-done-toggle, .done-toggle-row, .tv-hud { display: none !important; }
+  .topstack { position: static; }
+  header { background: #fff !important; color: #000; border-bottom: 2px solid var(--brand-pink);
+    padding: 4px 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  header h1 { font-size: 18px; }
+  .brand-logo { width: 34px; height: 34px; }
+  .tab-panel { display: none !important; }
+  .tab-panel.active { display: block !important; }
+  .action-band, .kpi, .room, .room-calm, .cls-table tr, .cls-table {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; box-shadow: none !important; }
+  .action-band { margin: 6px 0; }
+  .kpis { padding: 6px 0; gap: 6px; }
+  .kpi { min-height: 0; padding: 8px 10px; break-inside: avoid; }
+  .kpi .big { font-size: 22px; }
+  .rooms, .cls-wrap, .sec-fresh { padding: 4px 0; }
+  .rooms-grid { gap: 8px; }
+  .room { break-inside: avoid; padding: 8px 10px; }
+  .room .wait .wnum { font-size: 30px; }
+  .calm-list { gap: 4px 8px; }
+  .done-group[hidden] { display: table-row-group !important; }   /* in đủ dòng đã thu gọn */
+  .sg-body[hidden] { display: block !important; }                /* in đủ mọi nhóm */
+  .sg-tools { display: none !important; }
+  .svc-group { break-inside: avoid; box-shadow: none !important; border: 1px solid var(--line); }
+  .trend-grid[hidden] { display: none !important; }
+  footer { padding: 6px 0; }
+  .room .wait .over { color: #b91c1c !important; background: #fff !important; border: 1px solid #b91c1c; }
+}
+
+/* Nhãn "vượt ngưỡng" trên thẻ phòng quá tải — số cụ thể cần giải tỏa */
+.room .wait .over { display: inline-block; margin-left: 8px; font-size: 12px; font-weight: 800;
+  color: #fff; background: var(--red); padding: 2px 9px; border-radius: 999px; vertical-align: 6px; }
+body.tv .room .wait .over { font-size: 17px; vertical-align: 10px; }
+
+/* ============================================================
+   MOBILE — điện thoại / màn hẹp. Dashboard này hay được mở trên
+   ĐT của điều phối viên/BGĐ đi buồng → phải đọc 1 tay, không tràn ngang.
+   Nguyên tắc: thu padding, header xuống dòng gọn, KPI 2 cột,
+   bảng CLS có khung cuộn an toàn, thẻ phòng 1 cột đọc trọn thông tin.
+   Giữ NGUYÊN logic/JS — chỉ điều chỉnh bố cục bằng CSS.
+   ============================================================ */
+@media (max-width: 720px) {
+  /* — Thu padding ngang toàn cục (24px → 14px) để lấy lại bề ngang — */
+  .kpis, .rooms, .cls-wrap, .trend, .sec-fresh, .legend, footer { padding-left: 14px; padding-right: 14px; }
+  .action-band { margin-left: 14px; margin-right: 14px; }
+  /* Dải phạm vi: nén lại — nó là BỐI CẢNH phải luôn thấy, không được ngốn 1/5 màn đầu của ĐT */
+  .scope-band { margin: 8px 14px 0; padding: 7px 11px; font-size: 12.5px; gap: 7px; }
+  .scope-band .sb-note { display: block; font-size: 11.5px; margin-top: 1px; }
+  /* — Tab bar: icon TRÊN / chữ DƯỚI (kiểu thanh điều hướng) — hết cảnh chữ gãy dòng lộn xộn +
+       emoji trôi nổi + badge lệch hàng.
+       ⚠️ `repeat(5, 1fr)` là số CỨNG kế thừa từ CS2 (5 tab). CS1 chỉ có 2 tab → 2 tab co vào 2/5 bề
+       ngang, bỏ trống 3/5 bên phải và vùng chạm hẹp lại vô cớ. Dùng `auto-fit` để chia đều theo SỐ
+       TAB THẬT → thêm/bớt tab (§9) không phải sờ lại CSS. — */
+  .tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+          gap: 0; padding: 0; box-shadow: inset 0 -1px 0 rgba(255,255,255,.08); }
+  .tabs .tab {
+    flex-direction: column; justify-content: flex-start; gap: 3px;
+    padding: 8px 3px 9px; font-size: 11px; font-weight: 600; line-height: 1.15;
+    text-align: center; border-bottom-width: 3px; min-width: 0;
+  }
+  .tabs .tab .tab-ico { font-size: 20px; }
+  .tabs .tab .tab-txt {
+    white-space: normal; word-break: keep-all; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; max-width: 100%;
+  }
+  /* badge → chấm số ở góc trên-phải mỗi ô (kiểu thông báo) */
+  .tabs .tab .tab-badge {
+    position: absolute; top: 4px; right: 8px; margin: 0;
+    min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px;
+    border: 1.5px solid var(--brand-blue-dark); box-shadow: 0 1px 2px rgba(0,0,0,.3);
+  }
+
+  /* — Header: cho phép xuống dòng, gom nút điều khiển xuống hàng riêng — */
+  header { flex-wrap: wrap; padding: 12px 14px; gap: 10px 12px; }
+  header h1 { font-size: 18px; line-height: 1.2; }
+  header h1 .h1-site { font-size: 13px; display: block; margin-top: 1px; }
+  header .sub { font-size: 12.5px; gap: 8px; flex-wrap: wrap; }
+  header .sub .sub-note { display: none; }   /* chú thích phụ — ẩn trên ĐT cho gọn */
+  .brand { gap: 10px; }
+  .brand-logo { width: 44px; height: 44px; }
+  .head-right { width: auto; gap: 8px; flex-wrap: nowrap; justify-content: flex-end; }
+  /* TỐI GIẢN HEADER cho ĐT: việc tự-cập-nhật chạy ở máy chủ NAS, người xem ĐT chỉ XEM.
+     → Ẩn thanh "Tự cập nhật" (lặp thời gian với badge "Chụp lúc…" + màu hồng gây nhiễu)
+       và pill trạng thái rảnh; chỉ hiện pill khi ĐANG nạp (spinner tiến trình). */
+  .update-bar { display: none; }
+  .refresh-status { order: 3; display: none; }
+  .refresh-status.updating { display: inline-flex; width: auto; flex: 1 1 100%; }
+  /* Màn-hình-tường + In ít dùng trên ĐT → ẩn, giữ DUY NHẤT nút Đăng xuất cho header gọn */
+  #btn-tv, #btn-print { display: none; }
+  .btn-tool { width: 34px; height: 34px; font-size: 15px; }
+
+  /* — KPI trên ĐT: MỘT số chủ đạo (.hero) to + full width, các thẻ BỐI CẢNH co nhỏ 2 cột.
+       Trước đây cả 4 thẻ to bằng nhau (26px) → ngốn ~430px = nửa màn ĐT, đẩy phòng đầu tiên ra khỏi
+       màn hình đầu (đúng lỗi §12.4 đã trị cho tab CĐHA nhưng tab Phòng khám chưa được áp).
+       ⚠️ Luật KPI phải nằm ở ĐÂY (khối 720px) chứ không phải khối 560px: 2 khối cùng khớp trên ĐT
+       390px và cùng độ ưu tiên → khối đứng SAU trong file thắng. Đặt nhầm chỗ là không ăn. — */
+  .kpis { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .kpi { padding: 9px 12px; min-height: 0; border-left-width: 5px; }
+  .kpi .big { font-size: 20px; }
+  .kpi .lbl { font-size: 12px; margin-top: 2px; }
+  .kpi .sub-metric { font-size: 11px; line-height: 1.35; margin-top: 3px; }
+  .kpi.hero { grid-column: 1 / -1; order: -1; padding: 11px 13px; }
+  .kpi.hero .big { font-size: 40px; }
+  .kpi.hero .lbl { font-size: 13.5px; margin-top: 4px; }
+  .kpi.hero .sub-metric { font-size: 12.5px; }
+  .toa-pace { margin-left: 14px; margin-right: 14px; font-size: 12.5px; padding: 8px 12px; }
+
+  /* — Dải hành động: NÉN chiều dọc trên ĐT — icon nhỏ + nằm CÙNG DÒNG tiêu đề (không chiếm 1 dòng riêng) — */
+  .action-band { padding: 11px 14px; font-size: 14px; }
+  .action-band .ab-top { gap: 6px 8px; }
+  .action-band .ab-head { font-size: 15.5px; flex: 1 1 0; min-width: 0; }
+  .action-band .ab-ic { font-size: 15px; align-self: flex-start; margin-top: 2px; }
+  .action-band .ab-chips { flex: 1 1 100%; }   /* chip xuống hàng riêng, sát tiêu đề */
+  .action-band .ab-do-text { font-size: 14.5px; }
+
+  /* — Phòng khám: 1 cột (đọc trọn thông tin thẻ), không bóp — */
+  .rooms-grid, .calm-list { grid-template-columns: 1fr; }
+  .room .wait .wnum { font-size: 40px; }
+
+  /* — Bảng CLS: VỪA MÀN, KHÔNG cuộn ngang. Ẩn cột "Tổng" (chỉ là bối cảnh) trên ĐT
+     → còn 3 cột cần để quyết: Dịch vụ · Tồn đọng · Tiến độ. Số tổng vẫn ở KPI + tooltip. */
+  .cls-table { font-size: 13px; }
+  .cls-table th, .cls-table td { padding: 8px 9px; }
+  /* Tên dịch vụ dài (tiếng Việt) hay wrap 3 dòng → cỡ nhỏ + dòng chặt cho nhịp hàng đều */
+  .cls-table td.name { max-width: 200px; font-size: 12.5px; line-height: 1.3; }
+  .cls-table th.th-tong, .cls-table td.tong { display: none; }
+  .cls-head h2 { font-size: 16px; }
+  /* Chú thích gọn lại trên ĐT (bỏ vạch ngăn, siết khoảng cách) */
+  .cls-legend { gap: 4px 12px; font-size: 12px; padding: 2px 0 8px; }
+  .cls-legend .leg-sep { display: none; }
+  /* Thanh tiến độ cao hơn trên ĐT → đọc tỉ lệ chờ/làm/xong rõ khi màn hẹp */
+  .stack { height: 20px; border-radius: 5px; }
+
+  /* — Bảng TỔNG QUAN trên ĐT: GIỮ thanh khối-lượng (đây là overview!) → cho nó xuống DÒNG RIÊNG
+       full-width dưới tên+tồn; chỉ ẩn cột "tổng" số (đã mã hóa bằng độ dài thanh) — */
+  .sg-tools { flex-wrap: wrap; gap: 6px 9px; }
+  .sg-tools .sg-tot-lbl { flex: 1 1 100%; }
+  .sg-head { grid-template-columns: 16px 22px minmax(0,1fr) auto;
+    grid-template-areas: "caret ic name bl" "bar bar bar bar";
+    gap: 9px 8px; padding: 12px 12px; min-height: 58px; }
+  .sg-head .caret { grid-area: caret; }
+  .sg-ic { grid-area: ic; }
+  .sg-name { grid-area: name; font-size: 14.5px; align-self: center; }
+  .sg-bl { grid-area: bl; }
+  .sg-prog { grid-area: bar; width: 100%; }      /* thanh khối lượng full-width xuống dòng */
+  .sg-tot, .sg-n { display: none; }              /* tổng (mã bằng độ dài) + #DV ẩn cho gọn */
+  .sg-bl b { font-size: 21px; }
+  .vtrack { height: 18px; }                       /* thanh cao hơn chút trên ĐT cho dễ đọc */
+  .svc-row { grid-template-columns: minmax(0,1fr) auto; gap: 5px 10px; padding: 11px 12px 12px 20px; }
+  .sr-prog { grid-column: 1 / -1; }
+  .sr-tot { display: none; }
+
+  /* — Bỏ chú thích kỹ thuật ở chân trang (quản lý không cần "Sinh lúc…");
+     thời điểm số liệu đã có ở badge "Chụp lúc…" mỗi tab — chống lặp — */
+  footer { display: none; }
+
+  /* — Trend (thu gọn mặc định nên ưu tiên thấp; vẫn chỉnh cho không tràn) — */
+  #trend { max-width: 100%; }
+  .tline { grid-template-columns: 1fr 96px 46px; gap: 8px; padding: 10px 12px; }
+  .tl-now { font-size: 18px; }
+  .trend-system { flex-wrap: wrap; gap: 8px 12px; }
+  .trend-system .ts-spark { flex: 1 1 100%; width: 100%; }
+
+  /* — Tab Khám toàn diện: gọn cho ĐT — */
+  /* 3 mục thu gọn (phân tích): ẩn dòng mô tả dài → còn 1 dòng tiêu đề + chip tóm tắt */
+  .ktd-more .ktd-sec-sub { display: none; }
+  .ktd-more .ktd-sec-sum { margin-left: 0; }   /* chip về TRÁI, sát tiêu đề (không trôi phải rời rạc) */
+  .ktd-more-label { padding-top: 10px; }
+  .ktd-hint { font-size: 12px; margin-bottom: 8px; }
+  /* Hàng phòng: số "cần khám thêm" là tâm điểm, nhãn phụ nhỏ; nén padding */
+  .ktd-eld-top { padding: 9px 11px; gap: 9px; }
+  .ktd-eld-big .eb-num { font-size: 23px; }
+  .ktd-eld-big .eb-lbl { font-size: 10px; }
+  /* Nén nhịp dọc tab Khám toàn diện → câu hỏi "Phòng nào điều phối trước?" lên cao trong tầm nhìn đầu màn */
+  #tab-ktd .kpis { padding-top: 11px; padding-bottom: 0; }
+  #tab-ktd .cls-wrap { padding-top: 9px; padding-bottom: 14px; }
+}
+
+/* Màn rất hẹp (≤360px) — siết thêm một nấc. Giữ KPI 2 cột tới tận đây để
+   đầu trang không bị 5 thẻ xếp dọc lê thê; chỉ về 1 cột khi thật sự quá hẹp. */
+@media (max-width: 360px) {
+  .kpis { grid-template-columns: 1fr; }       /* 1 cột để số KPI không bị cắt */
+  header h1 { font-size: 16px; }
+  .tabs .tab { padding: 8px 2px 9px; font-size: 10.5px; }
+  .tabs .tab .tab-ico { font-size: 19px; }
+  .room .wait .wnum { font-size: 36px; }
+}
+
+/* =====================================================================
+   TAB TOA THUỐC — danh sách chờ lấy thuốc + phân bố thời gian chờ
+   Màu RAG (đỏ/cam) TÁCH khỏi brand để chống loãng tín hiệu (alarm fatigue):
+   đỏ = quá hạn (>50′) cần gọi tên ngay · cam = chú ý (31–50′) · ≤30′ không tô.
+   ===================================================================== */
+/* Danh sách chờ = CARD responsive (bảng cũ 6 cột VỠ ở mobile: tên & "đang chờ"
+   rớt dòng lệch nhau). Grid 3 cột: rank · tên/meta · cụm phải (đang chờ + cờ).
+   "Đang chờ" luôn nowrap → KHÔNG BAO GIỜ xuống hàng (lỗi user bắt). */
+.wlist { display: flex; flex-direction: column; gap: 6px; }
+.wl-row {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 10px; background: #fff; border: 1px solid var(--line);
+}
+.wl-row.red   { background: var(--red-bg);   border-color: #fecaca; }
+.wl-row.amber { background: var(--amber-bg); border-color: #fde68a; }
+.wl-rank { color: var(--muted); font-size: 13px; text-align: center; font-variant-numeric: tabular-nums; }
+.wl-main { min-width: 0; }
+.wl-name { font-weight: 600; line-height: 1.25; }
+.wl-lines { font-weight: 400; font-size: 12px; color: var(--brand-blue-dark); white-space: nowrap;
+  background: var(--brand-blue-50); border-radius: 999px; padding: 1px 7px; margin-left: 2px; }
+.wl-dt { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: 2px; }
+.wl-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.wl-manb { font-variant-numeric: tabular-nums; letter-spacing: .2px; color: #475569; }
+/* cụm phải LUÔN 1 hàng (cờ + giờ chờ cùng dòng) → mọi dòng đều cao bằng nhau, hết "lúc 1 hàng lúc 2 hàng" */
+.wl-right { display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 8px; white-space: nowrap; }
+.wl-wait { font-weight: 800; font-size: 16px; white-space: nowrap; font-variant-numeric: tabular-nums; color: #334155; }
+.wl-row.red   .wl-wait { color: var(--red); }
+.wl-row.amber .wl-wait { color: var(--amber); }
+.wl-gone { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.wl-flag { font-size: 10.5px; font-weight: 800; letter-spacing: .3px; border-radius: 999px;
+  padding: 2px 8px; color: #fff; white-space: nowrap; }
+.wl-flag.red { background: var(--red); }
+.wl-flag.amber { background: var(--amber); }
+/* Toa chờ >2h (nghi đã về) — gom sau nút để không kéo lệch danh sách chờ thực */
+.wl-toggle { margin-top: 12px; background: none; border: 1px dashed var(--line);
+  color: var(--muted); border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 13px; }
+.wl-toggle:hover { border-color: var(--brand-blue); color: var(--brand-blue-dark); }
+.wl-walked { margin-top: 8px; opacity: .82; }
+
+/* Diễn biến hàng đợi (xu hướng + nhịp phát) — 1 dòng quyết định mở/đóng quầy */
+.toa-pace { display: flex; align-items: center; gap: 8px; margin: 4px 24px 0;
+  padding: 8px 14px; background: #fff; border: 1px solid var(--line);
+  border-left: 4px solid var(--brand-blue); border-radius: 10px; font-size: 13.5px; color: #334155; }
+.toa-pace .pc-ic { font-size: 16px; flex: none; }
+.toa-pace .pc-up { color: var(--red); }       /* hàng chờ tăng = áp lực lên */
+.toa-pace .pc-dn { color: var(--green); }      /* giảm = đang giải toả */
+.toa-pace .pc-flat { color: var(--muted); }
+.toa-pace .pc-sep { color: var(--line); }
+
+/* Thời gian chờ toa đã phát — khung theo mục tiêu SLA (≤30′): đạt | trễ + vạch mốc 30′ */
+.toa-dist { margin-top: 18px; }
+.tb-title { font-size: 13px; color: #475569; margin-bottom: 6px; }
+.tb-title .tb-sla { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.tb-bar { position: relative; display: flex; height: 26px; border-radius: 6px; overflow: visible; background: #f1f5f9; }
+.tb-bar > .tb-seg:first-child { border-radius: 6px 0 0 6px; }
+.tb-bar > .tb-seg:last-of-type { border-radius: 0 6px 6px 0; }
+.tb-seg { display: flex; align-items: center; justify-content: center; min-width: 22px; transition: width .3s; }
+.tb-seg .tb-n { font-size: 12px; font-weight: 700; color: #fff; }
+.tb-g { background: var(--green); } .tb-b { background: var(--brand-blue); }
+.tb-a { background: var(--amber); } .tb-r { background: var(--red); }
+/* vạch mục tiêu 30′ tại ranh giới đạt|trễ */
+.tb-mark { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #0f172a; opacity: .55; pointer-events: none; }
+.tb-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.tb-leg .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.tb-leg .tb-grp { font-weight: 700; color: #475569; }
+.tb-leg .tb-div { color: #cbd5e1; }
+.tb-take { display: block; margin-top: 9px; font-size: 13px; font-weight: 600; }
+.tb-take.warn { color: #b45309; }
+.tb-take.good { color: #166534; }
+.tb-defer { display: block; margin-top: 5px; font-size: 12px; color: var(--muted); }
+.tb-defer b { color: #475569; }
+.ok-empty { color: var(--green); }
+
+/* ===== TAB 5: Khám toàn diện ===== */
+/* Hero toàn chiều rộng: số % lớn + nhãn cạnh nhau (1 hàng), tỉ lệ toàn viện = dải phụ mảnh dưới. */
+#ktd-kpis { grid-template-columns: 1fr; }
+.ktd-hero { display: flex; flex-direction: column; gap: 10px; }
+.ktd-hero-main { display: flex; align-items: center; gap: 16px; }
+.ktd-hero-main .big { flex: none; }
+.ktd-hero-txt .lbl { margin-top: 0; }
+.ktd-hero-ctx { font-size: 13px; color: var(--muted); padding-top: 9px;
+  border-top: 1px dashed var(--line); display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; }
+.ktd-hero-ctx b { font-size: 16px; color: var(--brand-blue-dark); font-weight: 800;
+  font-variant-numeric: tabular-nums; }
+.ktd-hero-ctx span { color: var(--muted); }
+
+/* Thẻ "Tỉ lệ khám toàn diện toàn viện" = BỐI CẢNH chất lượng (KHÔNG cảnh báo) → số màu BRAND,
+   gắn với viền xanh trái, tách rõ khỏi số đỏ "người cao tuổi" của thẻ hero. Gọn hơn hero (min-height 0). */
+.ktd-rate-kpi { min-height: 0; }
+.ktd-rate-kpi .big { color: var(--brand-blue-dark); }
+.ktd-rate-kpi .big .big-sub { color: var(--brand-blue); }
+
+/* Chỉ số MÔ TẢ (không cảnh báo tải) → bar màu BRAND, không dùng RAG. */
+#ktd-table { display: flex; flex-direction: column; gap: 2px; }
+.ktd-row {
+  display: grid; grid-template-columns: minmax(180px, 1.6fr) minmax(120px, 3fr) minmax(110px, auto);
+  align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px;
+}
+.ktd-row:nth-child(odd) { background: #f8fafc; }
+.ktd-name { font-weight: 700; color: var(--ink); font-size: 14.5px; line-height: 1.25; }
+.ktd-name .ktd-sub { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: 1px; }
+.ktd-bar { height: 8px; background: var(--brand-blue-50); border-radius: 999px; overflow: hidden; }
+.ktd-bar > span { display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand-blue), var(--brand-blue-dark)); min-width: 2px; }
+.ktd-pct { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ktd-pct b { font-size: 17px; color: var(--brand-blue-dark); font-weight: 800; }
+.ktd-pct .ktd-td { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+/* RAG theo % khám toàn diện (user chốt): >20 xanh · 10–20 vàng · <10 đỏ-cam (% cao = tốt) */
+.ktd-green .ktd-bar > span { background: #16a34a; }
+.ktd-amber .ktd-bar > span { background: #d97706; }
+.ktd-red   .ktd-bar > span { background: #ea580c; }
+.ktd-green .ktd-pct b { color: #15803d; }
+.ktd-amber .ktd-pct b { color: #b45309; }
+.ktd-red   .ktd-pct b { color: #c2410c; }
+
+.ktd-detail { margin-top: 14px; }
+.ktd-patients { margin-top: 8px; display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.ktd-pt { border: 1px solid var(--line); border-radius: 8px; padding: 8px 11px; background: #fff; }
+/* TÊN = điểm neo quét mắt (đậm, đậm hơn tên phòng); Mã NB = tra cứu phụ → mảnh, xám, có dấu # */
+.ktd-pt-name { font-weight: 800; color: var(--ink); font-size: 14px; }
+.ktd-pt-name .ktd-pt-id { font-weight: 500; color: var(--gray); font-size: 10.5px;
+  margin-left: 6px; font-variant-numeric: tabular-nums; }
+.ktd-pt-name .ktd-pt-id::before { content: "#"; opacity: .55; }
+.ktd-pt-chain { font-size: 12.5px; color: var(--brand-blue-dark); margin-top: 3px; line-height: 1.35; }
+.ktd-pt-cred { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+@media (max-width: 560px) {
+  .ktd-row { grid-template-columns: 1fr auto; gap: 4px 10px; }
+  .ktd-bar { grid-column: 1 / -1; order: 3; }
+}
+
+/* ===== Tab Khám toàn diện — mục Bác sĩ + Flow ===== */
+.ktd-hint { margin: 0 0 10px; font-size: 13px; color: var(--muted); }
+/* Khối THỨ YẾU (phân tích sâu) — tách nhẹ khỏi khối CHÍNH (người cao tuổi) */
+.ktd-more { margin-top: 4px; }
+.ktd-more-label { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--muted); padding-top: 12px; border-top: 1px solid var(--line); margin-bottom: 2px; }
+.ktd-more .ktd-section:first-of-type { margin-top: 8px; }
+.ktd-section { margin-top: 16px; }
+.ktd-sec-sub { font-weight: 500; color: var(--muted); font-size: 13px; }
+/* Tiêu đề mục = flex để chip tóm tắt dồn về phải; KHI ĐÓNG vẫn thấy con số + cảnh báo */
+.ktd-sec-toggle { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; width: 100%; text-align: left; }
+.ktd-sec-sum { margin-left: auto; font-weight: 700; font-size: 12.5px; white-space: nowrap;
+  padding: 2px 11px; border-radius: 999px; background: var(--brand-blue-50); color: var(--brand-blue-dark); }
+.ktd-sec-sum:empty { display: none; }
+/* Chip CHỈ hiện khi mục ĐÓNG (đóng = tóm tắt · mở = chi tiết) → hết lặp số + bớt mực báo động khi mở.
+   Bám aria-expanded mà các hàm toggle đã duy trì sẵn → không cần thêm JS. */
+.ktd-sec-toggle[aria-expanded="true"] .ktd-sec-sum { display: none; }
+.ktd-sec-sum.red { background: var(--red-bg); color: var(--red); }
+.ktd-sec-sum.amber { background: var(--amber-bg); color: var(--amber); }
+.ktd-sec-sum.green { background: var(--green-bg); color: var(--green); }
+.ktd-sec-sum.muted { background: #eef1f4; color: var(--muted); }
+
+/* Theo bác sĩ chỉ định — THẺ DỌC mobile-first: tên + % (hero, RAG) · thanh so sánh · tỉ lệ · nơi đến */
+.ktd-doctors { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.ktd-doc-leg { font-size: 11.5px; color: var(--muted); display: flex; flex-wrap: wrap;
+  align-items: center; gap: 4px; margin-bottom: 2px; }
+.ktd-doc-arrow { color: var(--brand-blue); font-weight: 800; }
+.ktd-doc { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.ktd-doc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ktd-doc-bs { font-weight: 700; color: var(--ink); font-size: 14.5px; line-height: 1.25; }
+.ktd-doc-bs .ktd-doc-ph { font-weight: 500; color: var(--muted); font-size: 11.5px; margin-left: 7px; }
+/* % HIỆU QUẢ = số chủ đạo, tô RAG (cao = tốt) */
+.ktd-doc-pct { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ktd-doc-pct.green { color: var(--green); }
+.ktd-doc-pct.amber { color: var(--amber); }
+.ktd-doc-pct.red   { color: #ea580c; }   /* "thấp <10%" = cam, KHỚP bảng tỉ lệ (đỏ thật dành cho nguy hiểm) */
+.ktd-doc-pct.muted { color: var(--muted); }
+/* Thanh so sánh % + tỉ lệ thô bên phải */
+.ktd-doc-barwrap { display: flex; align-items: center; gap: 10px; }
+.ktd-doc-bar { flex: 1; height: 8px; border-radius: 999px; background: #eef1f4; overflow: hidden; }
+.ktd-doc-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--brand-blue); }
+.ktd-doc-bar-fill.green { background: var(--green); }
+.ktd-doc-bar-fill.amber { background: var(--amber); }
+.ktd-doc-bar-fill.red   { background: #ea580c; }
+.ktd-doc-bar-fill.muted { background: var(--gray); }
+.ktd-doc-ratio { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ktd-doc-ratio b { color: var(--ink); font-size: 13.5px; }
+.ktd-doc-ratio.solo { font-size: 13px; }   /* khi thiếu mẫu số (dữ liệu cũ): chỉ số BN, không thanh */
+.ktd-doc-dests { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.ktd-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
+  background: var(--brand-blue-50); color: var(--brand-blue-dark); border-radius: 999px; padding: 2px 9px; }
+.ktd-chip b { font-variant-numeric: tabular-nums; }
+.ktd-chip.more { background: #eef1f4; color: var(--muted); }
+.ktd-chip.icd { background: #fef3c7; color: #92400e; }
+
+/* Flow từng bệnh nhân — TIMELINE DỌC (chấm + đường nối): đọc gọn trên mobile, không wrap lởm chởm */
+.ktd-pt-n { font-weight: 500; color: var(--muted); font-size: 11.5px; margin-left: 8px; }
+.ktd-pt-flow { margin-top: 6px; padding-left: 3px; }
+.ktd-step { position: relative; padding: 1px 0 6px 15px; line-height: 1.3; }
+/* nút (chấm) mỗi chặng */
+.ktd-step::before { content: ""; position: absolute; left: 0; top: 5px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--brand-blue); }
+/* đường nối xuống chặng kế (trừ chặng cuối) */
+.ktd-step:not(:last-child)::after { content: ""; position: absolute; left: 3px; top: 11px; bottom: -1px;
+  width: 1.5px; background: var(--brand-blue-50); }
+.ktd-step-ph { font-weight: 700; color: var(--brand-blue-dark); font-size: 12.5px; }
+/* Giờ đi liền tên phòng (phụ, mảnh) — đã bỏ nhãn dịch vụ trùng tên phòng */
+.ktd-step-t { font-weight: 500; color: var(--muted); font-size: 11px; margin-left: 6px;
+  font-variant-numeric: tabular-nums; }
+/* ICD = thông tin TRUNG TÍNH (không phải cảnh báo) → tông slate, KHÔNG nền amber (giữ amber cho RAG).
+   Mobile KHÔNG có hover → không ellipsis-1-dòng (giấu mất chẩn đoán); KẸP 2 DÒNG để vẫn đọc được. */
+.ktd-step-icd { font-size: 11px; color: #475569; margin-top: 1px; max-width: 100%;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ktd-step-icd b { color: #334155; font-variant-numeric: tabular-nums; margin-right: 3px; }
+.ktd-step-icd.dup { color: var(--gray); }            /* chẩn đoán trùng chặng trước → mờ, chỉ mã */
+.ktd-step-icd.dup b { color: var(--gray); }
+.ktd-pt-cred { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+@media (max-width: 560px) {
+  .ktd-doc { grid-template-columns: 1fr auto; }
+  .ktd-doc-dests { grid-column: 1 / -1; }
+  /* Mobile: bỏ "khung hộp" từng thẻ → danh sách gạch hairline (nhiều BN/màn hơn) */
+  .ktd-grp-body { gap: 0; }
+  .ktd-pt { border: none; border-radius: 0; padding: 7px 2px; }
+  .ktd-pt + .ktd-pt { border-top: 1px solid var(--line); }
+}
+
+/* Flow group theo phòng khám — BĂNG PHÂN MỤC nền xanh nhạt + vạch nhấn HỒNG (gợi chấm hồng logo Từ Dũ) */
+.ktd-grp { margin-top: 14px; }
+.ktd-grp-head { position: relative; display: flex; align-items: baseline; gap: 9px;
+  font-weight: 800; color: var(--brand-blue-dark); font-size: 14px;
+  background: var(--brand-blue-50); border-radius: 6px;
+  padding: 5px 10px 5px 13px; margin-bottom: 7px; overflow: hidden; }
+.ktd-grp-head::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--brand-pink); }
+.ktd-grp-head .ktd-grp-n { font-weight: 600; color: var(--brand-blue-dark); font-size: 11.5px;
+  margin-left: 0; background: #fff; border-radius: 999px; padding: 1px 9px;
+  font-variant-numeric: tabular-nums; }
+.ktd-grp-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+
+/* BN ≥65 chưa khám toàn diện — xếp hạng phòng (tỉ lệ cao = xấu → đỏ; ngược % toàn diện) */
+.ktd-elderly { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+/* [hidden] PHẢI thắng display:flex/grid ở trên (nếu không nút đóng/mở không ẩn được danh sách) */
+.ktd-patients[hidden], .ktd-doctors[hidden], .ktd-elderly[hidden] { display: none; }
+.ktd-eld { border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px;
+  background: #fff; overflow: hidden; }
+.ktd-eld.ktd-red { border-left-color: var(--red); }
+.ktd-eld.ktd-amber { border-left-color: var(--amber); }
+.ktd-eld.ktd-green { border-left-color: var(--green); }
+/* Hàng phòng = NÚT bấm để bung danh sách BN */
+.ktd-eld-top { width: 100%; display: grid; grid-template-columns: 26px minmax(130px, max-content) 1fr auto 16px; gap: 10px;
+  align-items: center; background: none; border: 0; padding: 9px 11px; cursor: pointer; text-align: left; font: inherit; }
+.ktd-eld-top:hover { background: var(--brand-blue-50); }
+.ktd-eld-rank { width: 24px; height: 24px; border-radius: 50%; display: inline-flex;
+  align-items: center; justify-content: center; font-size: 12px; font-weight: 800;
+  background: #e2e8f0; color: var(--muted); }
+.ktd-eld.ktd-red .ktd-eld-rank { background: var(--red-bg); color: var(--red); }
+.ktd-eld-name { font-weight: 800; color: var(--ink); font-size: 14.5px; line-height: 1.25; }
+.ktd-eld-name .ktd-eld-ctx { display: block; font-weight: 500; color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+/* SỐ TO mỗi phòng = KPI severity (% chưa khám TD) để điều phối */
+/* Thanh tỉ lệ lấp khoảng giữa hàng — so sánh trực quan mức sót giữa các phòng (data-ink có nghĩa) */
+.ktd-eld-barwrap { align-self: center; height: 8px; border-radius: 999px; background: #eef2f6; overflow: hidden; min-width: 40px; }
+.ktd-eld-bar { display: block; height: 100%; border-radius: 999px; background: var(--gray); }
+.ktd-eld.ktd-red .ktd-eld-bar { background: var(--red); }
+.ktd-eld.ktd-amber .ktd-eld-bar { background: var(--amber); }
+.ktd-eld.ktd-green .ktd-eld-bar { background: var(--green); }
+.ktd-eld-big { text-align: right; white-space: nowrap; line-height: 1.05; }
+.ktd-eld-big .eb-num { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ink); }
+.ktd-eld-big .eb-lbl { display: block; font-size: 10.5px; color: var(--muted); font-weight: 600; }
+.ktd-eld.ktd-red .eb-num { color: var(--red); }
+.ktd-eld.ktd-amber .eb-num { color: var(--amber); }
+.ktd-eld.ktd-green .eb-num { color: var(--green); }
+.ktd-eld-caret { color: var(--muted); font-size: 12px; }
+.ktd-eld-list { display: flex; flex-direction: column; padding: 2px 11px 9px 47px; background: #fcfdfe; }
+.ktd-eld-list[hidden] { display: none; }
+/* Đuôi MỜ gom phòng lẻ (1–2 ca) — trung tính, không báo động giả */
+.ktd-eld-minor { margin-top: 2px; }
+.ktd-eld-minortog { width: 100%; display: flex; align-items: center; gap: 8px; background: none;
+  border: 0; padding: 7px 11px; cursor: pointer; text-align: left; font: inherit;
+  color: var(--muted); font-size: 12.5px; border-radius: 8px; }
+.ktd-eld-minortog:hover { background: #f1f5f9; }
+.ktd-eld-minortog .mn-txt b { color: var(--ink); font-weight: 600; }
+.ktd-eld-minorbody { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.ktd-eld-minorbody[hidden] { display: none; }
+/* Trong đuôi: hàng phòng lẻ làm xám trung tính (không nhuộm xanh/đỏ theo RAG) */
+.ktd-eld-minorbody .ktd-eld { border-left-color: var(--line) !important; opacity: .92; }
+.ktd-eld-minorbody .eb-num { color: var(--muted) !important; font-size: 22px; }
+.ktd-eld-pt { display: grid; grid-template-columns: 22px minmax(150px, 1.1fr) minmax(160px, 2fr);
+  gap: 10px; align-items: baseline; padding: 4px 0; border-top: 1px dashed var(--line); font-size: 13px; }
+.ktd-eld-pt:first-child { border-top: none; }
+.ep-i { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; }
+.ep-name { font-weight: 700; color: var(--ink); }
+.ep-name .ep-age { font-weight: 500; color: var(--muted); font-size: 11.5px; margin-left: 6px; }
+.ep-name .ep-id { display: block; font-weight: 500; color: var(--muted); font-size: 11px;
+  font-variant-numeric: tabular-nums; margin-top: 1px; }
+.ep-dx { color: #92400e; }
+.ep-dx b { font-variant-numeric: tabular-nums; }
+.ep-noicd { color: var(--muted); font-style: italic; }
+@media (max-width: 560px) {
+  .ktd-eld-pt { grid-template-columns: 18px 1fr; }
+  .ep-dx { grid-column: 2; }
+  /* Màn hẹp: bỏ thanh tỉ lệ (ít giá trị, gây bóp chật) → trả chỗ cho tên + số */
+  .ktd-eld-top { grid-template-columns: 26px 1fr auto 16px; }
+  .ktd-eld-barwrap { display: none; }
+}
+
+.kpi .big .big-sub { font-size: 0.5em; font-weight: 800; opacity: .8; margin-left: 2px; }
+
+.ktd-zero { display: flex; gap: 9px; align-items: flex-start; padding: 10px 12px; font-size: 13px;
+  color: #92400e; background: var(--amber-bg); border: 1px solid #fde68a; border-left: 4px solid var(--amber);
+  border-radius: 8px; margin-top: 6px; line-height: 1.5; }
+.ktd-zero-ico { color: var(--amber); font-size: 16px; line-height: 1.3; flex: none; }
+.ktd-zero-body { flex: 1; }
+.ktd-zero b { color: #92400e; font-weight: 800; }
+.ktd-zero i { font-style: normal; font-weight: 700; opacity: .8; }
+.ktd-zero-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.ktd-zchip { font-size: 12px; font-weight: 700; color: #92400e; background: #fff;
+  border: 1px solid #fde68a; border-radius: 999px; padding: 2px 9px; }

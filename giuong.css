@@ -1,0 +1,272 @@
+/* =====================================================================
+   TAB PHÒNG · GIƯỜNG NỘI TRÚ — kiểu dáng riêng của panel #tab-giuong
+   ---------------------------------------------------------------------
+   Trước 2026-07-22 đây là TRANG RIÊNG (giuong.html) với CSS nội tuyến.
+   Nay là TAB THẬT trong dashboard tổng (user chốt: "phải là 1 tab trong
+   dashboard tổng, không phải link sang dashboard khác").
+
+   ⚠️ HAI LUẬT PHẢI GIỮ khi sửa file này:
+   1. MỌI selector nằm trong `#tab-giuong` — panel này sống chung trang với
+      tab Phòng khám / CĐHA, để rò ra ngoài là hỏng 2 tab kia.
+   2. Class KHỐI mang tiền tố `g-` (g-kpi · g-room · g-bed · g-chip…).
+      style.css đã có `.kpi` `.room` `.rooms` `.chip` `.tools` `.legend` với
+      nghĩa KHÁC — trùng tên thì thuộc tính bên kia rò vào những chỗ file này
+      không khai (padding, margin…), sinh lỗi bố cục rất khó truy.
+   Màu/biến lấy từ `:root` của style.css (cùng bộ brand) — KHÔNG khai lại.
+   ===================================================================== */
+
+#tab-giuong { padding: 16px 24px 60px; }
+
+/* ===== KPI ===== */
+#tab-giuong .g-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px; margin-bottom: 16px; }
+#tab-giuong .g-kpi { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+#tab-giuong .g-kpi .lab { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+#tab-giuong .g-kpi .val { font-size: 30px; font-weight: 800; line-height: 1.15; margin-top: 2px; }
+#tab-giuong .g-kpi .note { font-size: 12px; color: var(--muted); }
+#tab-giuong .g-kpi.g-hero { background: var(--brand-blue-50); border-color: #bcd9ee; }
+#tab-giuong .g-kpi.g-hero .val { color: var(--brand-blue-dark); }
+#tab-giuong .g-kpi.g-free .val { color: var(--green); }
+#tab-giuong .g-kpi.g-out  .val { color: var(--amber); }
+#tab-giuong .g-kpi.g-none .val { color: var(--muted); }
+#tab-giuong .g-kpi.g-wait .val { color: var(--brand-pink); }
+
+/* ===== thanh công cụ ===== */
+#tab-giuong .g-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+#tab-giuong .g-tools input { flex: 1; min-width: 220px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 8px; font-size: 15px; font-family: inherit; background: #fff; }
+#tab-giuong .g-pick { display: none; }        /* chỉ dùng trên ĐT — desktop bày cả bảng khoa */
+/* ===== CHÚ GIẢI = BỘ LỌC TRẠNG THÁI GIƯỜNG (user chốt 2026-07-23) =====
+   Vừa nói nghĩa của màu, vừa bấm được để lọc → không tốn thêm hàng nào trong thanh dính.
+   Trạng thái BẬT có 3 tín hiệu tách rời nhau (WCAG 1.4.1 — không mã hóa bằng MỖI màu):
+   nền màu · chữ đậm · dấu ✓. */
+#tab-giuong .g-legend { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+#tab-giuong .g-lg { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  font: inherit; font-size: 12.5px; color: var(--muted); background: #fff;
+  border: 1px solid var(--line); border-radius: 20px; padding: 5px 11px; cursor: pointer; }
+#tab-giuong .g-lg:hover { border-color: var(--brand-blue); color: var(--ink); }
+#tab-giuong .g-lg i { width: 13px; height: 13px; border-radius: 3px; flex: none;
+  border: 1px solid rgba(0,0,0,.12); }
+/* màu ô vuông = ĐÚNG viền trái của thẻ giường tương ứng (.g-bed.busy/.out/.multi + chip trống) */
+#tab-giuong .g-lg[data-tt="trong"]  i { background: var(--green-bg); border-left: 4px solid var(--green); }
+#tab-giuong .g-lg[data-tt="nguoi"]  i { background: #fff; border-left: 4px solid var(--brand-blue); }
+#tab-giuong .g-lg[data-tt="sap_ra"] i { background: var(--amber-bg); border-left: 4px solid var(--amber); }
+#tab-giuong .g-lg[data-tt="nhieu"]  i { background: var(--red-bg); border-left: 4px solid var(--red); }
+#tab-giuong .g-lg[aria-pressed="true"] { font-weight: 700; }
+#tab-giuong .g-lg[aria-pressed="true"]::after { content: "✓"; font-size: 12px; margin-left: 1px; }
+#tab-giuong .g-lg[data-tt="trong"][aria-pressed="true"]  { color: #15803d; background: var(--green-bg); border-color: #86c99b; }
+#tab-giuong .g-lg[data-tt="nguoi"][aria-pressed="true"]  { color: var(--brand-blue-dark); background: var(--brand-blue-50); border-color: #7fb6dc; }
+#tab-giuong .g-lg[data-tt="sap_ra"][aria-pressed="true"] { color: var(--amber); background: var(--amber-bg); border-color: #eec66a; }
+#tab-giuong .g-lg[data-tt="nhieu"][aria-pressed="true"]  { color: var(--red); background: var(--red-bg); border-color: #eda3a3; }
+#tab-giuong .g-lg-clear { font: inherit; font-size: 12.5px; color: var(--muted); background: none;
+  border: 1px dashed var(--line); border-radius: 20px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
+#tab-giuong .g-lg-clear:hover { color: var(--red); border-color: #eda3a3; }
+#tab-giuong .g-lg-clear.an { display: none; }
+
+/* Dòng tóm tắt bộ lọc — đặt ngay đầu phần kết quả: bấm xong phải thấy NGAY còn lại bao nhiêu,
+   nếu không thì lọc ra 0 giường trông y hệt "mất dữ liệu" (log lỗi L06 §luật 5). */
+#tab-giuong .g-flt-sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  background: var(--brand-blue-50); border: 1px solid #bcd9ee; border-radius: 8px;
+  padding: 7px 11px; margin-bottom: 12px; font-size: 13px; color: var(--brand-blue-dark); }
+#tab-giuong .g-flt-sum .num { color: var(--muted); font-size: 12.5px; }
+#tab-giuong .g-empty-msg .g-sub { display: block; margin-top: 4px; font-size: 12.5px; }
+
+/* ===== BẢNG KHOA — hiện HẾT cùng lúc (không cuộn ngang), bấm để nhảy xuống chi tiết ===== */
+#tab-giuong .g-khoas { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 9px; margin-bottom: 22px; }
+#tab-giuong .g-kh { background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px;
+  cursor: pointer; text-align: left; font: inherit; color: inherit; display: block; }
+#tab-giuong .g-kh:hover { border-color: var(--brand-blue); box-shadow: 0 2px 8px rgba(11,102,169,.13); }
+#tab-giuong .g-kh b { display: block; font-size: 13.5px; margin-bottom: 3px; }
+#tab-giuong .g-kh .num { font-size: 12.5px; color: var(--muted); }
+#tab-giuong .g-kh .num em { font-style: normal; font-weight: 700; color: var(--ink); }
+#tab-giuong .g-kh .bar { height: 6px; border-radius: 4px; background: var(--green-bg); margin-top: 6px;
+  overflow: hidden; }
+#tab-giuong .g-kh .bar i { display: block; height: 100%; background: var(--brand-blue); border-radius: 4px; }
+#tab-giuong .g-kh .bar i.hi  { background: var(--red); }
+#tab-giuong .g-kh .bar i.mid { background: var(--amber); }
+#tab-giuong .g-kh .fr { color: var(--green); font-weight: 700; }
+#tab-giuong .g-kh .wt { color: var(--brand-pink); font-weight: 700; }
+
+/* ===== Thanh điều phối DÍNH (bảng khoa + ô tìm) =====
+   ⚠️ `top` KHÔNG phải 0 như hồi còn là trang riêng: trong dashboard tổng, khối
+   header+tabs (`.topstack`) đã dính sẵn ở đỉnh → phải chừa đúng chiều cao của nó,
+   nếu không thanh này chui xuống dưới tabs và bị che mất một nửa.
+   `--topstack-h` do JS đo thật (đổi theo bề ngang màn hình). */
+#tab-giuong .g-stickybar { position: sticky; top: var(--topstack-h, 0px); z-index: 4;
+  background: #f1f5f9; padding-top: 8px;
+  box-shadow: 0 6px 10px -8px rgba(15,23,42,.28); margin-bottom: 14px; }
+#tab-giuong .g-stickybar .g-khoas { margin-bottom: 10px; }
+#tab-giuong .g-stickybar .g-tools { margin-bottom: 0; padding-bottom: 8px; }
+
+/* ===== tiêu đề mỗi khoa trong phần chi tiết ===== */
+/* chừa chiều cao (tabs + thanh dính) — không thì bấm khoa xong tiêu đề chui xuống dưới thanh */
+#tab-giuong .g-khoa-sec { margin-bottom: 26px;
+  scroll-margin-top: calc(var(--topstack-h, 0px) + var(--sticky-h, 8px) + 8px); }
+#tab-giuong .g-khoa-head { position: sticky; top: calc(var(--topstack-h, 0px) + var(--sticky-h, 0px));
+  z-index: 3; background: #f1f5f9; padding: 9px 0 7px;
+  border-bottom: 2px solid var(--brand-blue); margin-bottom: 12px;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+#tab-giuong .g-khoa-head h2 { margin: 0; font-size: 17px; color: var(--brand-blue-dark); }
+#tab-giuong .g-khoa-head .st { font-size: 13px; color: var(--muted); }
+
+/* Nút nổi về đầu tab. Ẩn khi đang ở đầu — lúc đó bảng khoa đã ngay trước mắt. */
+#tab-giuong .g-top-btn { position: fixed; right: 16px; bottom: 16px; z-index: 9;
+  background: var(--brand-blue); color: #fff; border: 0; border-radius: 24px; padding: 11px 16px;
+  font: inherit; font-size: 13.5px; cursor: pointer; box-shadow: 0 3px 12px rgba(0,0,0,.22);
+  transition: opacity .2s, transform .2s; }
+#tab-giuong .g-top-btn.an { opacity: 0; transform: translateY(60px); pointer-events: none; }
+
+/* ===== phòng ===== */
+#tab-giuong .g-floor { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .05em; border-bottom: 2px solid var(--line); padding-bottom: 5px; }
+#tab-giuong .g-rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px; margin-bottom: 22px; grid-auto-flow: dense; align-items: start; }
+#tab-giuong .g-room { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
+#tab-giuong .g-room.wide  { grid-column: 1 / -1; }     /* phòng nhiều giường trải NGANG, không kéo dài 1 cột */
+#tab-giuong .g-room.full  { border-color: #f3c7c7; }
+#tab-giuong .g-room.empty { background: var(--gray-bg); }
+#tab-giuong .g-room h3 { margin: 0 0 3px; font-size: 15px; font-weight: 700; display: flex;
+  justify-content: space-between; align-items: center; gap: 8px; }
+/* SỨC CHỨA = số giường HIS khai trong phòng (HIS không có trường sức chứa riêng) */
+#tab-giuong .g-cap { font-size: 11.5px; font-weight: 700; color: var(--brand-blue-dark);
+  background: var(--brand-blue-50); border: 1px solid #bcd9ee; border-radius: 20px; padding: 2px 9px;
+  white-space: nowrap; }
+#tab-giuong .g-cap.done { color: var(--red); background: var(--red-bg); border-color: #f3c7c7; }
+#tab-giuong .g-room .rmeta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+#tab-giuong .g-beds { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 6px; align-items: start; }
+
+/* Giường TRỐNG = chip nhỏ xếp sát nhau (chỉ cần liếc là thấy còn chỗ), không chiếm chỗ như thẻ */
+#tab-giuong .g-frees { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; padding-top: 7px;
+  border-top: 1px dashed var(--line); }
+#tab-giuong .g-frees .lb { font-size: 12px; color: var(--green); font-weight: 700; margin-right: 2px;
+  align-self: center; }
+#tab-giuong .g-chip { font-size: 12.5px; font-weight: 600; color: #15803d; background: var(--green-bg);
+  border: 1px solid #bbf7d0; border-radius: 6px; padding: 3px 8px; }
+
+#tab-giuong .g-bed { border: 1px solid var(--line); border-left-width: 4px; border-radius: 7px;
+  padding: 6px 9px; background: #fff; }
+#tab-giuong .g-bed.busy  { border-left-color: var(--brand-blue); }
+#tab-giuong .g-bed.out   { border-left-color: var(--amber); background: var(--amber-bg); }
+#tab-giuong .g-bed.multi { border-left-color: var(--red); background: var(--red-bg); }
+#tab-giuong .g-bed .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+#tab-giuong .g-bed .no { font-weight: 700; font-size: 13.5px; }
+#tab-giuong .g-bed .tag { font-size: 11px; padding: 1px 6px; border-radius: 20px; background: #fff;
+  border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+#tab-giuong .g-bed .who { font-size: 13px; margin-top: 1px; line-height: 1.35; }
+#tab-giuong .g-bed .who .nm  { font-weight: 600; }
+#tab-giuong .g-bed .who .kid { color: var(--muted); font-size: 12.5px; }
+#tab-giuong .g-bed .det { font-size: 12px; color: var(--muted); }
+/* Số vào viện (mã bệnh án) — để đối chiếu ĐÚNG người bệnh với giấy tờ trên tay. Nghiêng + chọn
+   được bằng chuột để copy; không tô đậm vì đây là thông tin xác nhận, không phải thông tin chính. */
+#tab-giuong .g-bed .ba { font-size: 11.5px; font-style: italic; color: var(--muted); letter-spacing: .02em;
+  -webkit-user-select: all; user-select: all; }   /* -webkit-: iPhone/Safari, người trực hay dùng ĐT */
+#tab-giuong .g-bed .out-at { color: var(--amber); font-weight: 600; }
+#tab-giuong .g-bed.free .no { color: var(--green); }
+
+#tab-giuong .g-unassigned { background: #fff; border: 1px dashed var(--brand-pink); border-radius: 10px;
+  padding: 12px; margin-bottom: 22px; }
+#tab-giuong .g-unassigned h3 { margin: 0 0 4px; font-size: 15px; color: var(--brand-pink); }
+#tab-giuong .g-unassigned .hint { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+#tab-giuong .g-ugrp { margin-bottom: 9px; font-size: 13px; }
+#tab-giuong .g-ugrp > b { color: var(--brand-pink); }
+#tab-giuong .g-ulist { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 6px; font-size: 13px; margin-top: 5px; }
+#tab-giuong .g-ulist div { padding: 5px 8px; background: var(--brand-pink-50); border-radius: 6px; }
+
+/* Nhãn trạng thái người bệnh (chỉ hiện khi KHÁC "Đang điều trị") */
+#tab-giuong .g-tt { font-size: 11px; font-weight: 700; border-radius: 20px; padding: 1px 7px;
+  white-space: nowrap; border: 1px solid; margin-left: 2px; }
+#tab-giuong .g-tt20 { color: var(--brand-blue-dark); background: var(--brand-blue-50); border-color: #bcd9ee; }
+#tab-giuong .g-tt40 { color: var(--brand-pink); background: var(--brand-pink-50); border-color: #f7c6dd; }
+#tab-giuong .g-tt50 { color: var(--amber); background: var(--amber-bg); border-color: #f5dda6; }
+#tab-giuong .g-empty-msg { color: var(--muted); padding: 20px; text-align: center; background: #fff;
+  border-radius: 10px; }
+#tab-giuong .g-foot { color: var(--muted); font-size: 12.5px; padding: 6px 0 0; }
+
+/* ⚠️ Ngưỡng 720px = ĐÚNG ngưỡng style.css đổi header/tabs sang bản ĐT (hồi còn là trang riêng
+   file này dùng 600px → ở bề ngang giữa 2 mốc, tab và nội dung đổi kiểu lệch nhịp nhau). */
+@media (max-width: 720px) {
+  #tab-giuong { padding: 10px 14px 70px; }
+
+  /* 5 thẻ KPI bằng nhau ngốn trọn màn đầu → chỉ thẻ CHÍNH to, 4 thẻ bối cảnh xếp 2 cột nhỏ */
+  #tab-giuong .g-kpis { grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 12px; }
+  #tab-giuong .g-kpi.g-hero { grid-column: 1 / -1; }
+  #tab-giuong .g-kpi { padding: 8px 10px; }
+  #tab-giuong .g-kpi .val { font-size: 21px; }
+  #tab-giuong .g-kpi.g-hero .val { font-size: 31px; }
+  #tab-giuong .g-kpi .note { display: none; }
+  #tab-giuong .g-kpi.g-hero .note { display: block; }
+  #tab-giuong .g-kpi .lab { font-size: 10.5px; }
+
+  /* THANH ĐIỀU PHỐI DÍNH — 2 dòng gọn (~100px), luôn theo người dùng suốt hàng trăm màn:
+     dòng 1 = khoa đang xem + còn trống bao nhiêu (bấm để đổi khoa) · dòng 2 = ô tìm kiếm.
+     Bảng 14 khoa KHÔNG dính (2 cột × 7 hàng = 676px, dính là mất trọn màn) → gập vào nút. */
+  #tab-giuong .g-stickybar { display: flex; flex-direction: column; padding-top: 6px; margin-bottom: 12px;
+    box-shadow: 0 5px 8px -7px rgba(15,23,42,.4); }
+  /* ⚠️ `flex-wrap: nowrap` là BẮT BUỘC: khối gốc khai `wrap`, mà flex NHIỀU DÒNG theo chiều dọc
+     thì bề rộng dòng = max-content của item rộng nhất → hàng lọc (4 nút, 528px) kéo nở cả ô tìm
+     và làm TRÀN NGANG trang, đồng thời vô hiệu `overflow-x` của hàng lọc. Một dòng thì item
+     stretch đúng bề ngang màn hình và hàng lọc tự cuộn ngang trong lòng nó. */
+  #tab-giuong .g-stickybar .g-tools { order: 1; margin: 0; padding: 0 0 6px;
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
+  /* KHÔNG chuyển động mượt cho max-height: gập có hiệu ứng thì lúc nhảy tới khoa, trang còn
+     đang co lại → cuộn quá đích cả 500px (đo thật: tiêu đề khoa lệch −410px). Gập tức thì mới đúng. */
+  #tab-giuong .g-stickybar .g-khoas { order: 2; max-height: 0; overflow: hidden; margin: 0; }
+  #tab-giuong .g-stickybar.open .g-khoas { max-height: 62vh; overflow-y: auto; margin: 0 0 8px; }
+  #tab-giuong .g-tools input { min-height: 44px; font-size: 16px; }  /* 16px: iOS không tự phóng to khi gõ */
+  /* Trước 2026-07-23 chú giải bị ẨN trên ĐT ("màu đã tự nói nghĩa") — nay nó là BỘ LỌC nên
+     phải còn: ẩn = mất tính năng. Xếp MỘT hàng cuộn ngang (~44px) thay vì để xuống 2 hàng,
+     giữ thanh dính gọn đúng tinh thần §13.1: dòng khoa · dòng tìm · dòng lọc. */
+  #tab-giuong .g-legend { flex-wrap: nowrap; overflow-x: auto; gap: 6px;
+    scrollbar-width: none; padding-bottom: 1px; }   /* Safari dùng ::-webkit-scrollbar ngay dưới */
+  #tab-giuong .g-legend::-webkit-scrollbar { display: none; }
+  #tab-giuong .g-lg, #tab-giuong .g-lg-clear { min-height: 44px; padding: 6px 12px; font-size: 13px;
+    flex: none; }                                 /* ≥44px vùng chạm (Apple HIG) · không co lại khi cuộn ngang */
+  /* Nút Bỏ lọc lên ĐẦU hàng: nó chỉ hiện khi đang lọc, mà nằm cuối thì phải cuộn ngang qua
+     4 chip mới với tới — thao tác thoát khỏi bộ lọc phải luôn ở trong tầm ngón cái. */
+  #tab-giuong .g-lg-clear { order: -1; }
+
+  /* Nút chọn khoa: 1 tay bấm được, nhãn tự nói đang ở đâu — khỏi cuộn ngược lên dò */
+  #tab-giuong .g-pick { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px;
+    padding: 8px 12px; border: 1px solid #bcd9ee; border-radius: 8px;
+    background: var(--brand-blue-50); color: var(--brand-blue-dark);
+    font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
+  #tab-giuong .g-pick .plab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  #tab-giuong .g-pick .cev { font-size: 12px; opacity: .75; transition: transform .18s ease; }
+  #tab-giuong .g-stickybar.open .g-pick .cev { transform: rotate(180deg); }
+  #tab-giuong .g-pick .fr { color: var(--green); }
+  #tab-giuong .g-pick .wt { color: var(--brand-pink); }
+
+  /* Bảng khoa: 2 cột cho gọn màn, vẫn thấy hết 14 khoa */
+  #tab-giuong .g-khoas { grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 16px; }
+  #tab-giuong .g-kh { padding: 8px 9px; min-height: 44px; }
+  #tab-giuong .g-kh b { font-size: 12.5px; line-height: 1.25; }
+  #tab-giuong .g-kh .num { font-size: 11.5px; line-height: 1.35; }
+
+  #tab-giuong .g-khoa-head { padding: 8px 0 6px; }
+  #tab-giuong .g-khoa-head h2 { font-size: 15.5px; }
+  #tab-giuong .g-khoa-head .st { font-size: 12px; }
+  #tab-giuong .g-floor { font-size: 12px; }
+
+  #tab-giuong .g-rooms { grid-template-columns: 1fr; gap: 9px; }
+  #tab-giuong .g-beds  { grid-template-columns: 1fr; gap: 5px; }
+  #tab-giuong .g-room { padding: 10px; }
+  #tab-giuong .g-room h3 { font-size: 14.5px; }
+  #tab-giuong .g-bed { padding: 7px 9px; }
+  #tab-giuong .g-chip { padding: 5px 9px; font-size: 12px; }   /* vùng chạm to hơn cho ngón tay */
+  #tab-giuong .g-ulist { grid-template-columns: 1fr 1fr; font-size: 12.5px; }
+  #tab-giuong .g-top-btn { right: 10px; bottom: 10px; padding: 12px 15px; min-height: 44px; }
+}
+@media (max-width: 380px) {
+  #tab-giuong .g-khoas { grid-template-columns: 1fr; }
+  #tab-giuong .g-kpis  { grid-template-columns: 1fr 1fr; }
+}
+
+/* In: nút nổi và ô tìm không có nghĩa trên giấy */
+@media print {
+  #tab-giuong .g-top-btn, #tab-giuong .g-tools, #tab-giuong .g-legend { display: none !important; }
+  #tab-giuong .g-stickybar, #tab-giuong .g-khoa-head { position: static; box-shadow: none; }
+}

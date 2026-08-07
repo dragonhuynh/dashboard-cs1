@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sơ đồ phòng · giường nội trú — BV Từ Dũ CS1</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<!-- ==========================================================================================
+     TRANG NÀY NAY CHỈ CHUYỂN HƯỚNG.  (2026-07-22 — user chốt)
+
+     Sơ đồ phòng · giường đã thành TAB THỨ 3 ngay trong dashboard tổng: `index.html#giuong`
+     (user: "phải là 1 tab trong dashboard tổng, không phải link sang dashboard khác").
+     Toàn bộ kiểu dáng + logic chuyển sang `giuong.css` / `giuong.js` — MỘT nơi để bảo trì.
+
+     Giữ file này (thay vì xoá) vì người dùng có thể đã tạo lối tắt / đánh dấu trang tới nó,
+     và VAN_HANH.md từng hướng dẫn mở thẳng file này.
+     Dùng `replace()` chứ không phải gán `href`: đừng để nút Quay lại của trình duyệt kẹt vòng lặp.
+     ========================================================================================== -->
+<script>location.replace("index.html#giuong");</script>
+<style>
+  body{margin:0;font:15px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif;color:#0f172a;background:#f1f5f9;
+       display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:24px}
+  a{color:#005A92;font-weight:700}
+</style>
+</head>
+<body>
+  <!-- Chỉ hiện khi trình duyệt chặn chuyển hướng bằng JS -->
+  <p>Sơ đồ giường nay nằm trong dashboard tổng.<br>
+     <a href="index.html#giuong">Mở tab Phòng · Giường →</a></p>
+</body>
+</html>
