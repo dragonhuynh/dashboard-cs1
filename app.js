@@ -2316,7 +2316,10 @@ load();
 ubStart();
 
 // ---- Tự nạp lại NGẦM, nhẹ & lịch sự (theo best-practice dashboard real-time) ----
-const AUTO_MS = 600000;     // 10 phút — khớp nhịp build lại web + nhịp cập nhật số
+// 5 phút — BẰNG chu kỳ `--auto --interval 5`. Trước đây để 10' (di sản nhịp build web của CS2)
+// → số mới nằm sẵn trên máy/Worker mà trang vẫn hiện số của vòng trước, người xem tưởng luồng
+// thu thập đã chết. Tab Phòng·Giường (`giuong.js LAM_MOI_PHUT`) vốn đã 5' — nay cả 3 tab cùng nhịp.
+const AUTO_MS = 300000;
 const RETRY_MS = 30000;     // lỗi/hoãn → thử lại sớm
 let _autoTimer = null;
 
