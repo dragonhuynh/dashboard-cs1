@@ -246,10 +246,37 @@
       var t = b.dataset.tab;
       var panel = document.getElementById("tab-" + t);
       if (duoc[t]) { conLai.push(t); return; }
-      b.hidden = true;
+      /* Dùng CLASS chứ KHÔNG dùng thuộc tính `hidden` — xem giải thích ở auth.css:
+         style.css khai display cho `.tabs .tab` và `.tab-panel.active`, đè mất
+         display:none của [hidden] ⇒ tab vẫn hiện và vẫn bấm được. */
+      b.classList.add("auth-cam");
       b.setAttribute("aria-hidden", "true");
-      if (panel) { panel.classList.remove("active"); panel.hidden = true; }
+      b.tabIndex = -1;                       // không lọt vào thứ tự nhấn phím Tab
+      b.disabled = true;
+      if (panel) { panel.classList.remove("active"); panel.classList.add("auth-cam"); }
     });
+
+    /* Bọc switchTab: chặn ở LỚP HÀNH VI, không chỉ lớp hiển thị.
+       Ẩn bằng CSS mà để switchTab chạy tự do thì bàn phím, hash, hoặc bất kỳ mã
+       nào gọi switchTab('cls') vẫn mở được panel cấm. Giữ hàm gốc, chỉ lọc tên tab. */
+    var goc = window.switchTab;
+    if (typeof goc === "function" && !goc.__auth) {
+      var boc = function (name) {
+        if (!duoc[name]) name = conLai[0];
+        if (!name) return;
+        return goc(name);
+      };
+      boc.__auth = true;
+      window.switchTab = boc;
+    }
+
+    /* Thanh đếm ngược "Tự cập nhật" nói về số liệu PHÒNG KHÁM. Tài khoản không có
+       quyền đó thì nó đứng mãi ở "Đang chờ số liệu…" — một dòng chữ sai sự thật
+       về thứ người dùng còn không được xem. Ẩn đi. */
+    if (!duoc.clinic && !duoc.cls) {
+      var ub = document.getElementById("update-bar");
+      if (ub) ub.style.display = "none";
+    }
     // Chỉ còn 1 tab thì thanh tab không mang thông tin gì nữa → ẩn luôn cho gọn
     // (đúng tinh thần "màn hình mặc định chỉ chứa một thứ", CLAUDE.md §12.5).
     var nav = document.querySelector(".tabs");
@@ -309,7 +336,19 @@
     // Cấp NGUỒN DỮ LIỆU cho app.js và giuong.js. Hai file kia không biết gì về
     // đăng nhập — chúng chỉ hỏi "cho tôi dữ liệu", ai đưa thì tuỳ chế độ.
     window.API_FETCH_CLINIC = function () { return layDuLieu("clinic"); };
-    window.GIUONG_LOADER = function () { return layDuLieu("beds"); };
+    window.GIUONG_LOADER = function () {
+      return layDuLieu("beds").then(function (d) {
+        /* Chip ngày trên header vốn lấy từ dữ liệu PHÒNG KHÁM. Tài khoản không có
+           quyền đó thì nó đứng mãi ở "Ngày —", trông như hỏng. Lấy tạm ngày của
+           chính số liệu giường — đúng thứ người dùng này đang xem. */
+        if (d && d.cap_nhat && !xemDuocPK) {
+          var el = document.getElementById("report-date");
+          var p = String(d.cap_nhat).slice(0, 10).split("-");
+          if (el && p.length === 3) el.textContent = p[2] + "/" + p[1] + "/" + p[0];
+        }
+        return d;
+      });
+    };
 
     var chuanBi = xemDuocPK
       ? layDuLieu("clinic").then(function (d) { window.DASHBOARD_DATA = d || null; })

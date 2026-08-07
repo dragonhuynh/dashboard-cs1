@@ -94,6 +94,17 @@ body.auth-locked { overflow: hidden; }
 .auth-kick h2 { margin: 0 0 10px; font-size: 18px; color: #b4123a; font-weight: 800; }
 .auth-kick p { margin: 0 0 8px; font-size: 13.5px; color: #46627c; line-height: 1.6; }
 
+/* ===== TAB KHÔNG CÓ QUYỀN =====
+   ⚠️ KHÔNG dùng thuộc tính `hidden` để ẩn tab. `style.css` khai
+   `.tabs .tab { display: inline-flex }` và `.tab-panel.active { display: block }`
+   — luật của tác giả ĐÈ LÊN `display:none` mặc định của `[hidden]` (luật trình
+   duyệt chỉ là hạng UA). Hậu quả đã thấy thật 2026-08-07: tài khoản cskh vẫn
+   hiện đủ 3 tab và bấm vào được, dù JavaScript đã gán hidden = true.
+   Phải dùng class riêng + !important thì mới thắng được. */
+.tabs .tab.auth-cam,
+.tab-panel.auth-cam,
+.tab-panel.auth-cam.active { display: none !important; }
+
 /* ===== Chip tài khoản trên header (nằm trong .head-right của index.html) ===== */
 .auth-chip {
   display: inline-flex; align-items: center; gap: 8px; padding: 5px 6px 5px 11px;
