@@ -101,6 +101,9 @@
 /* màu ô vuông = ĐÚNG viền trái của thẻ giường tương ứng (.g-bed.busy/.out/.multi + chip trống) */
 #tab-giuong .g-sg[data-tt="trong"] i { background: var(--green-bg); border-left: 4px solid var(--green); }
 #tab-giuong .g-sg[data-tt="nguoi"] i { background: #fff; border-left: 4px solid var(--brand-blue); }
+/* Ô vuông của "Chưa thấy người" phải ĐỨT y như viền trái thẻ `.g-bed.away` — luật "ô vuông = đúng
+   viền trái thẻ giường" là thứ giúp người dùng nối được nút lọc với thứ hiện ra. */
+#tab-giuong .g-sg[data-tt="vang"] i { background: #fff; border-left: 4px dashed var(--brand-blue); }
 #tab-giuong .g-sg[aria-checked="true"] { font-weight: 700; color: var(--brand-blue-dark);
   background: var(--brand-blue-50); box-shadow: inset 0 0 0 1px #7fb6dc; }
 /* "Tất cả" là trạng thái KHÔNG LỌC → tô xanh dương như hai mục kia thì đọc ra "đang có bộ lọc chạy".
@@ -146,6 +149,13 @@
 #tab-giuong .g-preset-cau:hover { background: var(--brand-pink-50); }
 #tab-giuong .g-preset-cau[aria-pressed="true"] { color: #fff; background: var(--brand-pink);
   border-color: var(--brand-pink); }
+/* PRESET "Có thể đã trống" — viền NÉT ĐỨT vì đây là NGHI VẤN phải soát tận nơi, không phải chỗ
+   trống đã xác nhận. Cố ý KHÔNG mượn màu xanh lá của "Trống": tô xanh là khẳng định thay HIS (R09)
+   trong khi một trong hai giường trùng nhau vẫn đang có người nằm thật — mình không biết là giường nào. */
+#tab-giuong .g-preset-soat { color: var(--muted); border-style: dashed; border-color: #c2c8d0; }
+#tab-giuong .g-preset-soat:hover { color: var(--ink); background: #f1f5f9; border-color: #94a3b8; }
+#tab-giuong .g-preset-soat[aria-pressed="true"] { color: #fff; background: #475569;
+  border-color: #475569; border-style: solid; }
 #tab-giuong .g-preset.an { display: none; }   /* 0 khoa thiếu chỗ → ẩn, khỏi bấm ra danh sách rỗng */
 
 #tab-giuong .g-lg-clear { font: inherit; font-size: 12.5px; color: var(--muted); background: none;
@@ -276,6 +286,10 @@
 #tab-giuong .g-cap.soon { color: #b45309; background: var(--amber-bg); border-color: #f5dda6; }
 /* "sắp có N chỗ" trong dòng phòng — nói bằng CHỮ, để người không phân biệt màu vẫn đọc ra */
 #tab-giuong .g-room .rmeta b.soon { color: #b45309; }
+/* "trong đó N chưa thấy người tại chỗ" — cùng màu xanh thương hiệu với viền thẻ `.g-bed.away` để
+   mắt nối được dòng chữ với đúng những thẻ mang viền đứt ở ngay bên dưới. */
+#tab-giuong .g-room .rmeta b.away { color: var(--brand-blue-dark); }
+#tab-giuong .g-room .rmeta .away-lb { border-bottom: 1px dotted #c9ccd1; cursor: help; }
 #tab-giuong .g-room h3 { margin: 0 0 3px; font-size: 15px; font-weight: 700; display: flex;
   justify-content: space-between; align-items: center; gap: 8px; }
 /* SỨC CHỨA = số giường HIS khai trong phòng (HIS không có trường sức chứa riêng) */
@@ -307,6 +321,15 @@
 #tab-giuong .g-bed.busy  { border-left-color: var(--brand-blue); }
 #tab-giuong .g-bed.out   { border-left-color: var(--amber); background: var(--amber-bg); }
 #tab-giuong .g-bed.multi { border-left-color: var(--red); background: var(--red-bg); }
+/* ===== GIƯỜNG "CHƯA THẤY NGƯỜI TẠI CHỖ" (thêm 2026-08-10 — user báo từ Phòng B723) =====
+   HIS ghi giường đã có chủ, nhưng người bệnh đang ở khoa khác (phòng mổ · hồi sức · đang chuyển
+   khoa) ⇒ điều dưỡng ra tới nơi KHÔNG thấy ai nằm. Trước đây thẻ này trông y hệt giường đang có
+   người nằm, nên B723 đọc ra "3 giường có người" trong khi thực địa chỉ có 1.
+   ⚠️ Chỉ đổi viền trái sang NÉT ĐỨT + gạch chéo rất nhạt, KHÔNG đổi màu: luật "một giường một màu"
+   phải giữ (giường này vẫn có thể đồng thời sắp ra viện/amber hoặc nằm ghép/đỏ), và nét đứt đã là
+   thứ tiếng sẵn có của tab này cho "HIS ghi vậy, ngoài thực địa chưa chắc" (chip .g-giu · .g-dup). */
+#tab-giuong .g-bed.away { border-left-style: dashed; background-image:
+  repeating-linear-gradient(135deg, rgba(100,116,139,.06) 0 5px, transparent 5px 11px); }
 #tab-giuong .g-bed .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 #tab-giuong .g-bed .no { font-weight: 700; font-size: 13.5px; }
 #tab-giuong .g-bed .tag { font-size: 11px; padding: 1px 6px; border-radius: 20px; background: #fff;

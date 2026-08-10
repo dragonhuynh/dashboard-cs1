@@ -181,7 +181,16 @@
             <div class="g-seg" role="radiogroup" aria-labelledby="g-fl1">
               <button class="g-sg" type="button" role="radio" data-tt="" aria-checked="true">Tất cả <span class="c" data-c="all"></span></button>
               <button class="g-sg" type="button" role="radio" data-tt="trong" aria-checked="false"><i></i>Trống <span class="c" data-c="trong"></span></button>
-              <button class="g-sg" type="button" role="radio" data-tt="nguoi" aria-checked="false"><i></i>Có người <span class="c" data-c="nguoi"></span></button>
+              <!-- TRẠNG THÁI THỨ BA, tách ra 2026-08-10 sau khi user báo từ Phòng B723: "Trống / Có
+                   người" là trạng thái của BẢN GHI chứ không phải của THỰC ĐỊA. Đo mốc 13:21: 46
+                   giường HIS ghi có chủ nhưng MỌI người trên đó đang ở nơi khác (mổ 30 · hồi sức 24
+                   · chuyển khoa 4) ⇒ ra tới nơi không thấy ai nằm, mà lọc "Trống" thì không ra.
+                   Ba trạng thái vẫn LOẠI TRỪ NHAU và phủ 100% (573 + 46 + 1.374 = 1.993) nên
+                   segmented control vẫn đúng chuẩn radio. -->
+              <button class="g-sg" type="button" role="radio" data-tt="vang" aria-checked="false"
+                      title="HIS ghi giường đã có chủ, nhưng người bệnh đang ở nơi khác (phòng mổ · hồi sức · đang chuyển khoa). Ra tới nơi sẽ KHÔNG thấy ai nằm — nhưng giường vẫn có chủ, người bệnh sẽ về, ĐỪNG xếp thêm người vào (đếm theo GIƯỜNG)."><i></i>Chưa thấy người <span class="c" data-c="vang"></span></button>
+              <button class="g-sg" type="button" role="radio" data-tt="nguoi" aria-checked="false"
+                      title="Giường có ít nhất một người bệnh thực sự nằm tại chỗ (đếm theo GIƯỜNG)"><i></i>Có người <span class="c" data-c="nguoi"></span></button>
             </div>
           </div>
           <div class="g-frow">
