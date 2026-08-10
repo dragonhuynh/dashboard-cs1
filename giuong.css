@@ -211,6 +211,16 @@
 #tab-giuong .g-room.empty.concho { border-color: #6cb583; box-shadow: inset 0 0 0 1px #6cb583; }
 #tab-giuong .g-room.empty .g-chip { background: #dcfce7; border-color: #86efac; }
 #tab-giuong .g-room.empty .g-frees { border-top-color: #bbf7d0; }
+/* TÊN PHÒNG đổi màu theo còn chỗ hay không (user chốt 2026-08-10): xanh = còn giường trống ·
+   đỏ = đã kín. Cùng câu hỏi với viền/nền nên KHÔNG thêm thông tin mới, nhưng tên phòng là thứ mắt
+   nhảy vào trước tiên khi quét dọc danh sách 519 phòng → đọc được mà không cần dò tới dòng nhỏ.
+   ⚠️ KHÔNG dùng `var(--green)`/`var(--red)` trực tiếp: tên phòng là chữ 15px (không thuộc diện
+   "chữ lớn" của WCAG) nên cần ≥4,5:1, mà đo ra `--green` #16a34a chỉ **3,3:1** trên nền trắng.
+   Dùng #15803d (5,02 trên trắng · 4,79 trên nền xanh nhạt của phòng rỗng) và #b91c1c (5,91 trên
+   nền đỏ nhạt của phòng kín — `--red` #dc2626 chỉ 4,41 trên nền đó, hụt ngưỡng).
+   Huy hiệu "đã kín" và viền vẫn giữ: người không phân biệt được màu vẫn đọc ra bằng chữ. */
+#tab-giuong .g-room.concho > h3 > span:first-child { color: #15803d; }
+#tab-giuong .g-room.full > h3 > span:first-child { color: #b91c1c; }
 #tab-giuong .g-room h3 { margin: 0 0 3px; font-size: 15px; font-weight: 700; display: flex;
   justify-content: space-between; align-items: center; gap: 8px; }
 /* SỨC CHỨA = số giường HIS khai trong phòng (HIS không có trường sức chứa riêng) */
