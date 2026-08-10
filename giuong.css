@@ -85,7 +85,10 @@
 #tab-giuong .g-kh .bar i { display: block; height: 100%; background: var(--brand-blue); border-radius: 4px; }
 #tab-giuong .g-kh .bar i.hi  { background: var(--red); }
 #tab-giuong .g-kh .bar i.mid { background: var(--amber); }
+/* SỐ GIƯỜNG TRỐNG là con số người xếp giường tìm đầu tiên → cho to hẳn lên, đừng để lẫn vào
+   dòng chữ 12,5px. `line-height: 1` giữ thẻ khoa không cao thêm vì một con số. */
 #tab-giuong .g-kh .fr { color: var(--green); font-weight: 700; }
+#tab-giuong .g-kh .fr .fn { font-size: 18px; font-weight: 800; line-height: 1; vertical-align: -1px; }
 #tab-giuong .g-kh .wt { color: var(--brand-pink); font-weight: 700; }
 
 /* ===== Thanh điều phối DÍNH (bảng khoa + ô tìm) =====
@@ -125,7 +128,12 @@
 #tab-giuong .g-room { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
 #tab-giuong .g-room.wide  { grid-column: 1 / -1; }     /* phòng nhiều giường trải NGANG, không kéo dài 1 cột */
 #tab-giuong .g-room.full  { border-color: #f3c7c7; }
-#tab-giuong .g-room.empty { background: var(--gray-bg); }
+/* Phòng KHÔNG có ai nằm → tô NGUYÊN Ô xanh lá nhạt (user chốt 2026-08-10): người xếp giường quét
+   mắt tìm chỗ trống, ô màu bắt mắt nhanh hơn là đọc chữ "0 có người" ở dòng nhỏ.
+   ⚠️ Chip trống bên trong phải ĐẬM HƠN nền ô, nếu không nó cùng màu nền → biến mất. */
+#tab-giuong .g-room.empty { background: var(--green-bg); border-color: #bbf7d0; }
+#tab-giuong .g-room.empty .g-chip { background: #dcfce7; border-color: #86efac; }
+#tab-giuong .g-room.empty .g-frees { border-top-color: #bbf7d0; }
 #tab-giuong .g-room h3 { margin: 0 0 3px; font-size: 15px; font-weight: 700; display: flex;
   justify-content: space-between; align-items: center; gap: 8px; }
 /* SỨC CHỨA = số giường HIS khai trong phòng (HIS không có trường sức chứa riêng) */
@@ -249,6 +257,9 @@
   #tab-giuong .g-kh { padding: 8px 9px; min-height: 44px; }
   #tab-giuong .g-kh b { font-size: 12.5px; line-height: 1.25; }
   #tab-giuong .g-kh .num { font-size: 11.5px; line-height: 1.35; }
+  /* ĐT chỉ 2 cột hẹp → 18px làm vỡ dòng "trống N" xuống hàng riêng; 15,5px vẫn nổi hơn hẳn 11,5px */
+  #tab-giuong .g-kh .fr .fn { font-size: 15.5px; }
+  #tab-giuong .g-pick .fr .fn { font-size: 16px; font-weight: 800; }
 
   #tab-giuong .g-khoa-head { padding: 8px 0 6px; }
   #tab-giuong .g-khoa-head h2 { font-size: 15.5px; }

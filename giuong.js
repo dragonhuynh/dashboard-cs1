@@ -110,7 +110,7 @@
       return `<button class="g-kh" type="button" data-i="${i}">
         <b>${esc(k.ten)}</b>
         <div class="num"><em>${n(k.giuong_co_nguoi)}</em>/${n(k.tong_giuong)} giường
-          · <span class="fr">trống ${n(k.giuong_trong)}</span>
+          · <span class="fr">trống <span class="fn">${n(k.giuong_trong)}</span></span>
           ${k.sap_ra ? ` · sắp ra ${n(k.sap_ra)}` : ""}
           ${k.cho_vao ? ` · <span class="wt">chờ vào ${n(k.cho_vao)}</span>` : ""}</div>
         <div class="bar"><i class="${lv}" style="width:${cs}%"></i></div>
@@ -149,7 +149,7 @@
     const k = i >= 0 ? D.khoas[i] : null;
     const lab = $("#g-pickLab"); if (!lab) return;
     lab.innerHTML = k
-      ? `${esc(k.ten)} · <span class="fr">trống ${n(k.giuong_trong)}</span>`
+      ? `${esc(k.ten)} · <span class="fr">trống <span class="fn">${n(k.giuong_trong)}</span></span>`
         + (k.cho_vao ? ` · <span class="wt">chờ vào ${n(k.cho_vao)}</span>` : "")
       : "Chọn khoa để xem sơ đồ giường";
   }
