@@ -208,26 +208,35 @@
      ⇒ KHÔNG được tự dời giường về phòng trùng tên cho "gọn" (luật 13: khớp HIS, đừng sửa số).
      Nhưng PHẢI NÓI RA: điều dưỡng đứng ở cửa B518 thấy chip xanh "Trống: B517.02" trong khi cả 4
      giường B518.xx đều kín thì tưởng dashboard sai — đúng lớp lỗi "số nói dối im lặng" (luật 5).
-     Đo 10/08: 14 giường ở 5 phòng (B303 · B307 · B412 · B518 · P1129).
-     ⚠️ Chỉ gắn dấu khi tiền tố ĐÚNG LÀ mã một phòng khác CỦA CÙNG KHOA. Bỏ điều kiện đó thì
-     `HS01` trong phòng `HKV1`, `GHE.003`, `GIUONG.05`… bị gắn oan (HIS đặt tên giường tự do). */
+     ⚠️ LUẬT ĐÁNH DẤU = "GIƯỜNG LẺ LOI TRONG PHÒNG": chỉ gắn khi phòng CÓ giường mang đúng mã phòng,
+     mà giường này thì không. Vì cái gây nhầm là sự LẺ LOI (B518 có B518.01–.04 rồi chen thêm
+     B517.02), không phải bản thân việc tên khác mã.
+     → Tự loại được các phòng HIS đặt tên đồng loạt, vốn KHÔNG có gì lẻ loi để mà nhầm: `HS01…HS25`
+       ở phòng `HKV1` · `GHE.003` ở `PD003` · `BTS101…` ở `BTS1` · `N1129.01–.02` ở `P1129`.
+     → Cũng KHÔNG cần biết phòng "chủ" của số hiệu có tồn tại hay không. Luật cũ (đòi tiền tố phải là
+       mã một phòng khác) bỏ sót `E309.03` trong phòng A309 vì HIS không khai phòng nào tên E309.
+     Đo 10/08 bằng dữ liệu thật: **13 giường ở 5 phòng** — B303 (6) · B307 (4) · B412 · A309 · B518. */
   const maGoc = g => String(g.so_hieu || "").split(".")[0];
-  function phongKhac(g, r, maCuaKhoa) {
+  function phongKhac(g, r, coGiuongDungMa) {
     const p = maGoc(g);
-    return p && r.ma && p !== r.ma && maCuaKhoa.has(p) ? p : "";
+    return coGiuongDungMa && p && r.ma && p !== r.ma ? p : "";
   }
+  // Phòng có ít nhất 1 giường mang đúng mã phòng → mới có chuyện "lẻ loi" để nói.
+  const coGiuongDungMa = r => !!r.ma && r.giuong.some(g => maGoc(g) === r.ma);
 
   /* Dòng giải thích đặt NGAY trong thẻ phòng — chỉ hiện ở 5 phòng toàn viện nên không thành nhiễu.
      Nói ĐÚNG điều HIS ghi, KHÔNG phán "HIS khai sai": mình không có cách nào biết giường đó thật ra
      nằm ở phòng nào (R09 — chưa biết thì đừng đoán). Chỉ xét giường ĐANG VẼ, để dòng chữ luôn khớp
      với thứ mắt đang thấy khi đang lọc. */
-  function maNote(beds, r, maCuaKhoa) {
-    const ds = beds.map(g => [g.so_hieu, phongKhac(g, r, maCuaKhoa)]).filter(x => x[1]);
+  function maNote(beds, r, dungMa) {
+    const ds = beds.filter(g => phongKhac(g, r, dungMa));
     if (!ds.length) return "";
-    const ma = [...new Set(ds.map(x => x[1]))];
+    /* ⚠️ Chỉ nói "số hiệu KHÔNG THEO mã phòng", ĐỪNG nói "mang mã phòng X": tiền tố nhiều khi không
+       phải mã phòng nào cả — `PMH.20…PMH.23` trong "Phòng mổ khu H" (mã HPM) là HIS gõ ngược chữ,
+       không có phòng nào tên PMH. Khẳng định nó là phòng khác là SUY ĐOÁN (R09). */
     return `<div class="g-manote">HIS khai ${ds.length > 1 ? "các giường" : "giường"} `
-      + `<b>${ds.map(x => esc(x[0])).join(" · ")}</b> thuộc phòng này, `
-      + `dù số hiệu mang mã phòng ${ma.map(esc).join(" · ")}.</div>`;
+      + `<b>${ds.map(g => esc(g.so_hieu)).join(" · ")}</b> thuộc phòng này, `
+      + `dù số hiệu không theo mã phòng ${esc(r.ma)}.</div>`;
   }
 
   // Lọc trạng thái và từ khóa CỘNG DỒN (VÀ): gõ "h6" rồi bấm "Giường trống" = giường trống của H6.
@@ -272,7 +281,6 @@
     const rooms = k.phong
       .map(r => ({ ...r, hien: r.giuong.filter(g => match(g, r)) }))
       .filter(r => r.hien.length);
-    const maCuaKhoa = new Set(k.phong.map(p => p.ma).filter(Boolean));
 
     dem.p += rooms.length;
     if (rooms.length) { dem.k++; dem.g += rooms.reduce((s, r) => s + r.hien.length, 0); }
@@ -294,6 +302,7 @@
         const conTrong = r.giuong.length - coNguoi;
         const busy = r.hien.filter(g => g.nguoi.length);
         const free = r.hien.filter(g => !g.nguoi.length);
+        const dungMa = coGiuongDungMa(r);
         const wide = busy.length > 3 ? " wide" : "";   // phòng đông → trải ngang cả hàng
         const day = conTrong === 0;
         html += `<div class="g-room${wide} ${coNguoi === 0 ? "empty" : (day ? "full" : "")}">
@@ -304,11 +313,11 @@
             : `<b>${coNguoi}</b> giường có người · <b>${conTrong}</b> trống${day ? " · <b>đã kín</b>" : ""}`}</div>
           ${busy.length ? `<div class="g-beds">${busy.map(bedHtml).join("")}</div>` : ""}
           ${free.length ? `<div class="g-frees"><span class="lb">Trống:</span>
-            ${free.map(g => { const pk = phongKhac(g, r, maCuaKhoa);
+            ${free.map(g => { const pk = phongKhac(g, r, dungMa);
               return `<span class="g-chip${pk ? " manote" : ""}"${pk
-                ? ` title="HIS khai giường này thuộc ${esc(r.ten)}, dù số hiệu mang mã phòng ${esc(pk)}"` : ""
+                ? ` title="HIS khai giường này thuộc ${esc(r.ten)}, dù số hiệu không theo mã phòng ${esc(r.ma)}"` : ""
                 }>${esc(g.so_hieu)}</span>`; }).join("")}</div>` : ""}
-          ${maNote(r.hien, r, maCuaKhoa)}
+          ${maNote(r.hien, r, dungMa)}
           </div>`;
       }
       if (open) html += "</div>";
