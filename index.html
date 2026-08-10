@@ -145,17 +145,55 @@
           <span class="plab" id="g-pickLab">Chọn khoa</span><span class="cev">▾</span>
         </button>
         <input id="g-q" type="search" placeholder="Tìm tên người bệnh, số giường hoặc phòng…">
-        <!-- Chú giải màu ĐỒNG THỜI là BỘ LỌC (user chốt 2026-07-23): bấm 1 trạng thái thì chỉ
-             hiện giường thuộc trạng thái đó, cộng dồn với từ khóa đang gõ (vd "h6" + Giường trống).
-             Chọn được NHIỀU trạng thái cùng lúc = HOẶC (trống + sắp ra viện = chỗ sắp có).
-             Màu ô vuông phải TRÙNG viền trái thẻ giường (giuong.css) — lọc một đằng màu bày
-             một nẻo là mất niềm tin. -->
-        <div class="g-legend" role="group" aria-label="Lọc theo trạng thái giường">
-          <button class="g-lg" type="button" data-tt="trong"  aria-pressed="false"><i></i>Giường trống</button>
-          <button class="g-lg" type="button" data-tt="nguoi"  aria-pressed="false"><i></i>Đang có người</button>
-          <button class="g-lg" type="button" data-tt="sap_ra" aria-pressed="false"><i></i>Sắp ra viện</button>
-          <button class="g-lg" type="button" data-tt="nhieu"  aria-pressed="false"><i></i>Nhiều người bệnh</button>
-          <button class="g-lg-clear an" type="button" id="g-lgClear">✕ Bỏ lọc</button>
+        <!-- ===== BỘ LỌC HAI TRỤC (chỉnh lại 2026-08-10 — thay hàng 4 chip HOẶC cũ) =====
+             Bản cũ để 4 chip trong CÙNG một nhóm HOẶC, mà thực chất chúng thuộc HAI trục khác nhau
+             ⇒ 8/16 tổ hợp bấm được cho kết quả trùng tổ hợp đơn giản hơn. Đo thật lúc 10:50:
+               · `Trống` + `Đang có người` = 521 + 1.472 = 1.993 = TOÀN BỘ dữ liệu, y hệt "Bỏ lọc",
+                 nhưng dòng tóm tắt vẫn ghi "Đang lọc" → nói dối người dùng.
+               · `Đang có người` + `Sắp ra viện` = 1.472 (KHÔNG đổi) vì `sắp ra viện` là TẬP CON —
+                 nút cha hấp thụ nút con, bấm thêm mà số không nhích thì đọc ra là "lọc hỏng".
+             Nay theo chuẩn faceted filtering: HOẶC trong một trục · VÀ giữa hai trục
+             (PatternFly/Red Hat), và trục loại-trừ-nhau dùng segmented control chứ không phải chip
+             đa chọn (IBM Carbon: mutually exclusive ⇒ radio) → không còn tổ hợp vô nghĩa nào.
+             Nhãn trục hiện HỮU HÌNH ("Tình trạng" · "Cần soát") — trước chỉ có aria-label, người
+             sáng mắt đọc hàng chip ra là chú giải màu nên không biết bấm được (NN/g affordance).
+             Số trên nút = SỐ GIƯỜNG của nhóm đó trong toàn bộ 14 khoa, JS đếm live mỗi lần vẽ
+             (KHÔNG chốt cứng: mỗi vòng 5' số đổi). Màu ô vuông phải TRÙNG viền trái thẻ giường. -->
+        <div class="g-fbar" id="g-fbar">
+          <div class="g-frow">
+            <!-- Nút Bỏ lọc để ĐẦU: thao tác thoát bộ lọc phải luôn trong tầm ngón cái (ĐT cuộn ngang) -->
+            <button class="g-lg-clear an" type="button" id="g-lgClear">✕ Bỏ lọc</button>
+            <!-- PRESET tác vụ: "chỗ sắp có" = trống HOẶC sắp ra viện — đây là HOẶC *chéo hai trục*
+                 nên không diễn đạt được bằng 2 hàng nút; Cerner bed board cũng cấp sẵn dạng
+                 "Filter Favorites". Đúng câu hỏi số 1 của người xếp giường. -->
+            <button class="g-preset" type="button" id="g-preset" aria-pressed="false"
+                    title="Giường trống HOẶC giường có người đã hẹn giờ ra viện — chỗ có thể nhận người bệnh hôm nay">
+              ⚡ Chỗ sắp có <span class="c" data-c="preset"></span>
+            </button>
+            <span class="g-fl" id="g-fl1">Tình trạng</span>
+            <div class="g-seg" role="radiogroup" aria-labelledby="g-fl1">
+              <button class="g-sg" type="button" role="radio" data-tt="" aria-checked="true">Tất cả <span class="c" data-c="all"></span></button>
+              <button class="g-sg" type="button" role="radio" data-tt="trong" aria-checked="false"><i></i>Trống <span class="c" data-c="trong"></span></button>
+              <button class="g-sg" type="button" role="radio" data-tt="nguoi" aria-checked="false"><i></i>Có người <span class="c" data-c="nguoi"></span></button>
+            </div>
+          </div>
+          <div class="g-frow">
+            <span class="g-fl" id="g-fl2">Cần soát</span>
+            <div class="g-legend" role="group" aria-labelledby="g-fl2">
+              <button class="g-lg" type="button" data-sg="sap_ra" aria-pressed="false"
+                      title="Giường có người bệnh đã hẹn giờ ra viện (đếm theo GIƯỜNG — thẻ KPI ở trên đếm theo NGƯỜI nên số khác)"><i></i>Sắp ra viện <span class="c"></span></button>
+              <!-- 3 dấu hiệu dưới đây hiện trên thẻ bằng CHIP (không phải màu viền giường) → dùng
+                   GLYPH thay ô vuông màu, để luật "ô vuông = đúng màu viền thẻ" không bị nói sai. -->
+              <button class="g-lg" type="button" data-sg="qua_hen" aria-pressed="false"
+                      title="Đã qua giờ hẹn ra viện mà người bệnh còn trên giường — chỗ đáng lẽ đã trống (đếm theo GIƯỜNG)"><span class="gl">⏰</span>Quá giờ hẹn <span class="c"></span></button>
+              <button class="g-lg" type="button" data-sg="giu" aria-pressed="false"
+                      title="Giường đã có người đăng ký giữ chỗ nhưng người đang ở nơi khác (phòng mổ · hồi sức · đang chuyển khoa) — đứng ở cửa phòng sẽ không thấy ai (đếm theo GIƯỜNG)"><span class="gl">⇢</span>Giữ chỗ <span class="c"></span></button>
+              <button class="g-lg" type="button" data-sg="ghep" aria-pressed="false"
+                      title="Từ 2 người bệnh trở lên nằm cùng một giường, không tính ca trùng giường hay giữ chỗ (mẹ và con tính là MỘT) — đếm theo GIƯỜNG"><i></i>Nằm ghép <span class="c"></span></button>
+              <button class="g-lg" type="button" data-sg="trung" aria-pressed="false"
+                      title="Trên giường có người bệnh mà HIS đồng thời gán ở giường khác — cần soát lại, một trong hai giường có thể đã trống (đếm theo GIƯỜNG)"><span class="gl">⧉</span>Trùng giường <span class="c"></span></button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

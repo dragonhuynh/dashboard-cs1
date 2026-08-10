@@ -36,28 +36,74 @@
 #tab-giuong .g-tools input { flex: 1; min-width: 220px; padding: 10px 12px; border: 1px solid var(--line);
   border-radius: 8px; font-size: 15px; font-family: inherit; background: #fff; }
 #tab-giuong .g-pick { display: none; }        /* chỉ dùng trên ĐT — desktop bày cả bảng khoa */
-/* ===== CHÚ GIẢI = BỘ LỌC TRẠNG THÁI GIƯỜNG (user chốt 2026-07-23) =====
-   Vừa nói nghĩa của màu, vừa bấm được để lọc → không tốn thêm hàng nào trong thanh dính.
-   Trạng thái BẬT có 3 tín hiệu tách rời nhau (WCAG 1.4.1 — không mã hóa bằng MỖI màu):
-   nền màu · chữ đậm · dấu ✓. */
-#tab-giuong .g-legend { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-#tab-giuong .g-lg { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
-  font: inherit; font-size: 12.5px; color: var(--muted); background: #fff;
-  border: 1px solid var(--line); border-radius: 20px; padding: 5px 11px; cursor: pointer; }
-#tab-giuong .g-lg:hover { border-color: var(--brand-blue); color: var(--ink); }
-#tab-giuong .g-lg i { width: 13px; height: 13px; border-radius: 3px; flex: none;
+/* ===== BỘ LỌC HAI TRỤC (chỉnh 2026-08-10 — trước là 1 hàng 4 chip HOẶC) =====
+   Trục 1 = tình trạng chiếm dụng: 3 giá trị LOẠI TRỪ NHAU, phủ 100% giường ⇒ **segmented
+   control** (IBM Carbon: mutually exclusive ⇒ radio). Bản cũ dùng chip đa chọn nên bấm
+   "Trống"+"Có người" ra đúng 100% dữ liệu mà vẫn báo "đang lọc".
+   Trục 2 = dấu hiệu cần soát: tập con của "có người" ⇒ chip chọn nhiều, HOẶC trong trục và
+   VÀ với trục 1 (PatternFly). Nhãn trục HỮU HÌNH để hàng chip không bị đọc thành chú giải.
+   Trạng thái BẬT luôn có ≥3 tín hiệu tách rời nhau (WCAG 1.4.1 — không mã hóa bằng MỖI màu):
+   nền màu · chữ đậm · dấu ✓ (chip) hoặc viền trong (segmented). */
+/* MỘT hàng tự xuống dòng, KHÔNG phải 2 hàng cố định: đo thật ở 1440px, xếp cứng 2 hàng làm thanh
+   dính phình 363 → 423px = 47% màn 900px, đẩy sơ đồ giường xuống dưới nếp gấp. `display: contents`
+   cho .g-frow để mọi nút của cả 2 trục nằm chung một "hồ" và tự gói theo bề ngang thật; nhãn trục
+   + khung viền của segmented đã đủ tách hai trục bằng mắt, không cần tách bằng hàng riêng. */
+#tab-giuong .g-fbar { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center;
+  gap: 7px; min-width: 0; }
+#tab-giuong .g-frow { display: contents; }
+#tab-giuong .g-fl { flex: none; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted); }
+#tab-giuong .g-sg .c, #tab-giuong .g-lg .c, #tab-giuong .g-preset .c {
+  font-weight: 700; font-variant-numeric: tabular-nums; opacity: .75; }
+
+/* — TRỤC 1 — */
+#tab-giuong .g-seg { display: inline-flex; flex: none; background: #fff;
+  border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
+#tab-giuong .g-sg { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  font: inherit; font-size: 12.5px; color: var(--muted); background: none; border: 0;
+  border-left: 1px solid var(--line); padding: 5px 9px; cursor: pointer; }
+#tab-giuong .g-sg:first-child { border-left: 0; }
+#tab-giuong .g-sg:hover { color: var(--ink); background: #f6f9fc; }
+#tab-giuong .g-sg i, #tab-giuong .g-lg i { width: 13px; height: 13px; border-radius: 3px; flex: none;
   border: 1px solid rgba(0,0,0,.12); }
 /* màu ô vuông = ĐÚNG viền trái của thẻ giường tương ứng (.g-bed.busy/.out/.multi + chip trống) */
-#tab-giuong .g-lg[data-tt="trong"]  i { background: var(--green-bg); border-left: 4px solid var(--green); }
-#tab-giuong .g-lg[data-tt="nguoi"]  i { background: #fff; border-left: 4px solid var(--brand-blue); }
-#tab-giuong .g-lg[data-tt="sap_ra"] i { background: var(--amber-bg); border-left: 4px solid var(--amber); }
-#tab-giuong .g-lg[data-tt="nhieu"]  i { background: var(--red-bg); border-left: 4px solid var(--red); }
+#tab-giuong .g-sg[data-tt="trong"] i { background: var(--green-bg); border-left: 4px solid var(--green); }
+#tab-giuong .g-sg[data-tt="nguoi"] i { background: #fff; border-left: 4px solid var(--brand-blue); }
+#tab-giuong .g-sg[aria-checked="true"] { font-weight: 700; color: var(--brand-blue-dark);
+  background: var(--brand-blue-50); box-shadow: inset 0 0 0 1px #7fb6dc; }
+#tab-giuong .g-sg[data-tt="trong"][aria-checked="true"] { color: #15803d; background: var(--green-bg);
+  box-shadow: inset 0 0 0 1px #86c99b; }
+
+/* — TRỤC 2 — */
+#tab-giuong .g-legend { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-width: 0; }
+#tab-giuong .g-lg { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  font: inherit; font-size: 12.5px; color: var(--muted); background: #fff;
+  border: 1px solid var(--line); border-radius: 20px; padding: 5px 9px; cursor: pointer; }
+#tab-giuong .g-lg:hover { border-color: var(--brand-blue); color: var(--ink); }
+/* Ô vuông màu CHỈ dùng cho 2 dấu hiệu có màu thẻ tương ứng; 3 dấu hiệu còn lại hiện bằng chip
+   trên thẻ (không phải màu viền) nên dùng GLYPH — bày ô màu cho chúng là nói sai luật màu. */
+#tab-giuong .g-lg[data-sg="sap_ra"] i { background: var(--amber-bg); border-left: 4px solid var(--amber); }
+#tab-giuong .g-lg[data-sg="ghep"]   i { background: var(--red-bg);   border-left: 4px solid var(--red); }
+#tab-giuong .g-lg .gl { flex: none; font-size: 12px; opacity: .8; }
 #tab-giuong .g-lg[aria-pressed="true"] { font-weight: 700; }
 #tab-giuong .g-lg[aria-pressed="true"]::after { content: "✓"; font-size: 12px; margin-left: 1px; }
-#tab-giuong .g-lg[data-tt="trong"][aria-pressed="true"]  { color: #15803d; background: var(--green-bg); border-color: #86c99b; }
-#tab-giuong .g-lg[data-tt="nguoi"][aria-pressed="true"]  { color: var(--brand-blue-dark); background: var(--brand-blue-50); border-color: #7fb6dc; }
-#tab-giuong .g-lg[data-tt="sap_ra"][aria-pressed="true"] { color: var(--amber); background: var(--amber-bg); border-color: #eec66a; }
-#tab-giuong .g-lg[data-tt="nhieu"][aria-pressed="true"]  { color: var(--red); background: var(--red-bg); border-color: #eda3a3; }
+#tab-giuong .g-lg[data-sg="sap_ra"][aria-pressed="true"],
+#tab-giuong .g-lg[data-sg="qua_hen"][aria-pressed="true"] { color: var(--amber); background: var(--amber-bg); border-color: #eec66a; }
+#tab-giuong .g-lg[data-sg="ghep"][aria-pressed="true"] { color: var(--red); background: var(--red-bg); border-color: #eda3a3; }
+#tab-giuong .g-lg[data-sg="giu"][aria-pressed="true"],
+#tab-giuong .g-lg[data-sg="trung"][aria-pressed="true"] { color: var(--brand-blue-dark);
+  background: var(--brand-blue-50); border-color: #7fb6dc; }
+
+/* — PRESET tác vụ — nhìn khác hẳn 2 trục: đây là "câu hỏi", không phải "thuộc tính" — */
+#tab-giuong .g-preset { display: inline-flex; align-items: center; gap: 6px; flex: none;
+  white-space: nowrap; font: inherit; font-size: 12.5px; font-weight: 700;
+  color: var(--brand-blue-dark); background: #fff; border: 1px solid #7fb6dc;
+  border-radius: 20px; padding: 5px 12px; cursor: pointer; }
+#tab-giuong .g-preset:hover { background: var(--brand-blue-50); }
+#tab-giuong .g-preset[aria-pressed="true"] { color: #fff; background: var(--brand-blue);
+  border-color: var(--brand-blue-dark); }
+#tab-giuong .g-preset[aria-pressed="true"] .c { opacity: .95; }
+
 #tab-giuong .g-lg-clear { font: inherit; font-size: 12.5px; color: var(--muted); background: none;
   border: 1px dashed var(--line); border-radius: 20px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
 #tab-giuong .g-lg-clear:hover { color: var(--red); border-color: #eda3a3; }
@@ -206,6 +252,16 @@
    Viền ĐỨT để phân biệt với nhãn trạng thái ở trên — "có đăng ký, chưa nằm tại chỗ". */
 #tab-giuong .g-giu { font-size: 11px; font-weight: 600; border-radius: 20px; padding: 1px 7px;
   white-space: nowrap; border: 1px dashed #c9ccd1; color: var(--muted); margin-left: 2px; }
+/* TRÙNG GIƯỜNG: người này đang được HIS gán ở giường khác nữa (đo 10/08: 247 người · 277 ô giường).
+   Không có nhãn này thì hai thẻ đỏ "2 người bệnh" cạnh nhau với y hệt hai cái tên (B511.01 ·
+   B511.02) đọc ra thành "phòng 2 giường mà 4 người". Viền đứt + glyph ⧉ để phân biệt với .g-giu. */
+#tab-giuong .g-dup { font-size: 11px; font-weight: 600; border-radius: 20px; padding: 1px 7px;
+  white-space: nowrap; border: 1px dashed #7fb6dc; color: var(--brand-blue-dark);
+  background: var(--brand-blue-50); margin-left: 2px; }
+#tab-giuong .g-dup::before { content: "⧉ "; opacity: .8; }
+/* Khối "đang cần bố trí giường" khi lọc CHỖ: là phía CẦU, phải nhỏ hơn phần chỗ trống ở trên */
+#tab-giuong .g-unassigned.nho { padding: 9px 11px; }
+#tab-giuong .g-unassigned.nho h3 { font-size: 13.5px; }
 #tab-giuong .g-empty-msg { color: var(--muted); padding: 20px; text-align: center; background: #fff;
   border-radius: 10px; }
 #tab-giuong .g-foot { color: var(--muted); font-size: 12.5px; padding: 6px 0 0; }
@@ -242,15 +298,21 @@
   #tab-giuong .g-stickybar.open .g-khoas { max-height: 62vh; overflow-y: auto; margin: 0 0 8px; }
   #tab-giuong .g-tools input { min-height: 44px; font-size: 16px; }  /* 16px: iOS không tự phóng to khi gõ */
   /* Trước 2026-07-23 chú giải bị ẨN trên ĐT ("màu đã tự nói nghĩa") — nay nó là BỘ LỌC nên
-     phải còn: ẩn = mất tính năng. Xếp MỘT hàng cuộn ngang (~44px) thay vì để xuống 2 hàng,
-     giữ thanh dính gọn đúng tinh thần §13.1: dòng khoa · dòng tìm · dòng lọc. */
-  #tab-giuong .g-legend { flex-wrap: nowrap; overflow-x: auto; gap: 6px;
-    scrollbar-width: none; padding-bottom: 1px; }   /* Safari dùng ::-webkit-scrollbar ngay dưới */
-  #tab-giuong .g-legend::-webkit-scrollbar { display: none; }
-  #tab-giuong .g-lg, #tab-giuong .g-lg-clear { min-height: 44px; padding: 6px 12px; font-size: 13px;
+     phải còn: ẩn = mất tính năng. HAI TRỤC dồn vào MỘT hàng cuộn ngang (~44px), KHÔNG để thành
+     2 hàng: thanh dính sẽ từ 157px lên ~200px = 24% màn 844px. `display: contents` cho .g-frow
+     để các nút của cả 2 trục nằm chung một hàng cuộn.
+     ⚠️ `flex-wrap: nowrap` BẮT BUỘC ở cả .g-fbar (bẫy đã ghi ở trên: flex nhiều dòng theo chiều
+     dọc lấy bề rộng = max-content của item rộng nhất → kéo nở ô tìm và TRÀN NGANG trang). */
+  #tab-giuong .g-fbar { flex-wrap: nowrap; gap: 6px;
+    overflow-x: auto; scrollbar-width: none; padding-bottom: 1px; }  /* Safari: ::-webkit-scrollbar dưới */
+  #tab-giuong .g-fbar::-webkit-scrollbar { display: none; }
+  #tab-giuong .g-legend { flex-wrap: nowrap; gap: 6px; }
+  #tab-giuong .g-seg { flex: none; }
+  #tab-giuong .g-lg, #tab-giuong .g-lg-clear, #tab-giuong .g-sg, #tab-giuong .g-preset {
+    min-height: 44px; padding: 6px 12px; font-size: 13px;
     flex: none; }                                 /* ≥44px vùng chạm (Apple HIG) · không co lại khi cuộn ngang */
   /* Nút Bỏ lọc lên ĐẦU hàng: nó chỉ hiện khi đang lọc, mà nằm cuối thì phải cuộn ngang qua
-     4 chip mới với tới — thao tác thoát khỏi bộ lọc phải luôn ở trong tầm ngón cái. */
+     cả hai trục mới với tới — thao tác thoát khỏi bộ lọc phải luôn ở trong tầm ngón cái. */
   #tab-giuong .g-lg-clear { order: -1; }
 
   /* Nút chọn khoa: 1 tay bấm được, nhãn tự nói đang ở đâu — khỏi cuộn ngược lên dò */
@@ -295,6 +357,6 @@
 
 /* In: nút nổi và ô tìm không có nghĩa trên giấy */
 @media print {
-  #tab-giuong .g-top-btn, #tab-giuong .g-tools, #tab-giuong .g-legend { display: none !important; }
+  #tab-giuong .g-top-btn, #tab-giuong .g-tools, #tab-giuong .g-fbar { display: none !important; }
   #tab-giuong .g-stickybar, #tab-giuong .g-khoa-head { position: static; box-shadow: none; }
 }

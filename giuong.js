@@ -22,35 +22,90 @@
   let daNap = false;            // đã nạp xong dữ liệu lần đầu chưa
   let dangNap = false;
   let q = "";
-  const ttLoc = new Set();      // trạng thái giường đang lọc (rỗng = hiện hết)
 
-  /* ===== 4 TRẠNG THÁI GIƯỜNG — dùng chung cho MÀU và cho BỘ LỌC =====
-     Mỗi giường thuộc ĐÚNG MỘT loại, thứ tự xét y hệt lúc tô màu thẻ: nhiều người bệnh >
-     sắp ra viện > đang có người. Lọc và màu phải cùng một hàm, nếu tách ra thì bấm
-     "Sắp ra viện" lại ra thẻ đỏ — dashboard nói một đằng bày một nẻo. */
-  const TEN_LOAI = { trong: "Giường trống", nguoi: "Đang có người", sap_ra: "Sắp ra viện", nhieu: "Nhiều người bệnh" };
-  const LOAI_CLS = { nguoi: "busy", sap_ra: "out", nhieu: "multi" };
-  // MÀU thẻ: một giường chỉ được MỘT màu → xét theo thứ tự ưu tiên (nặng nhất thắng).
+  /* ===== BỘ LỌC HAI TRỤC (chỉnh 2026-08-10 — xem chú thích markup trong index.html) =====
+     TRỤC 1 `ttTruc` — tình trạng chiếm dụng: "" (tất cả) | "trong" | "nguoi".
+       Ba giá trị LOẠI TRỪ NHAU và phủ 100% giường ⇒ chọn MỘT (segmented control). Bản cũ để
+       "trống"/"có người" thành 2 chip HOẶC nên bấm cả hai = 1.993 giường = y hệt không lọc.
+     TRỤC 2 `sigLoc` — dấu hiệu cần soát (tập con của "có người"): chọn NHIỀU, HOẶC trong trục,
+       VÀ với trục 1. Nhờ vậy "Có người + Sắp ra viện" nay ra 206 giường thay vì 1.472 như trước.
+     PRESET `preset` — "chỗ sắp có" = trống HOẶC sắp ra viện. Đây là HOẶC *chéo trục*, không diễn
+       đạt được bằng 2 hàng nút nên phải là một nút riêng. */
+  let ttTruc = "";
+  const sigLoc = new Set();
+  let preset = false;
+
+  const TEN_TT = { trong: "giường trống", nguoi: "giường có người" };
+  const TEN_SIG = { sap_ra: "sắp ra viện", qua_hen: "quá giờ hẹn ra viện",
+    giu: "giữ chỗ từ xa", ghep: "nằm ghép", trung: "trùng giường" };
+
+  /* MÀU thẻ giường: một giường chỉ được MỘT màu → xét theo thứ tự ưu tiên (nặng nhất thắng).
+     ⚠️ CỐ Ý GIỮ NGUYÊN luật màu `ho > 1` ⇒ đỏ, dù đo được 128/242 giường "nhiều người" là do
+     TRÙNG GIƯỜNG chứ không phải nằm ghép: khi một người bị HIS gán ở 2 giường, ta KHÔNG biết
+     giường nào là thật ⇒ hạ màu là tự đoán, mà đoán sai thì giấu mất một ca nằm ghép thật
+     (R09 · log lỗi L10). Thay vì đổi màu, mỗi người trùng được gắn chip "cũng ở <giường>" để
+     người đọc tự thấy vì sao thẻ đỏ — nói ra sự thật, không kết luận thay họ. */
   function loaiGiuong(g) {
     const ppl = g.nguoi || [];
     if (!ppl.length) return "trong";
     if (g.ho > 1) return "nhieu";
     return ppl.some(p => p.sap_ra) ? "sap_ra" : "nguoi";
   }
-  /* LỌC thì KHÔNG dùng ưu tiên — một giường thuộc được NHIỀU loại cùng lúc (user chốt 2026-08-10):
-     giường 2 mẹ con vẫn LÀ giường "đang có người", bấm lọc đó mà không thấy nó là nói thiếu
-     (B716.02 · B716.05 từng biến mất, phòng ghi "3 giường khớp" mà chỉ vẽ 2 người).
-     Giường có người sắp ra viện cũng vậy. Màu thẻ vẫn theo loaiGiuong → lọc "Sắp ra viện" có thể
-     ra thẻ ĐỎ (giường 2 người, 1 người sắp ra) — đúng bản chất, nhãn trên thẻ đã ghi rõ cả hai. */
-  function loaiLoc(g) {
-    const ppl = g.nguoi || [];
-    if (!ppl.length) return ["trong"];
-    const ds = ["nguoi"];
-    if (g.ho > 1) ds.push("nhieu");
-    if (ppl.some(p => p.sap_ra)) ds.push("sap_ra");
-    return ds;
+  const LOAI_CLS = { nguoi: "busy", sap_ra: "out", nhieu: "multi" };
+
+  /* ===== CHỈ SỐ NGƯỜI Ở NHIỀU GIƯỜNG =====
+     HIS cho một người GIỮ NHIỀU GIƯỜNG cùng lúc (đổi giường trong ngày thì giường cũ còn hiệu lực
+     tới giờ trả — CLAUDE.md §13.2). Đo 10/08: 247 người chiếm 2–3 ô giường, 277 ô giường mà MỌI
+     người trên đó cũng đang được vẽ ở giường khác. Không nói ra thì người xếp giường thấy thẻ đỏ
+     "2 người bệnh" ở hai giường cạnh nhau với y hệt hai cái tên (đo thật: B511.01 · B511.02).
+     Dựng lại mỗi lần vẽ (dữ liệu đổi 5'/lần), khoá theo tên + số vào viện. */
+  let dsGiuongCuaNguoi = new Map();
+  const khoaNguoi = p => p.ten + "|" + (p.ba ?? "");
+  function chiSoTrungGiuong() {
+    const m = new Map();
+    for (const k of D.khoas) for (const r of k.phong) for (const g of r.giuong)
+      for (const p of (g.nguoi || [])) {
+        const key = khoaNguoi(p);
+        if (!m.has(key)) m.set(key, []);
+        m.get(key).push(g.so_hieu);
+      }
+    dsGiuongCuaNguoi = m;
   }
-  const dangLoc = () => !!q || ttLoc.size > 0;
+  const giuongKhacCua = p => (dsGiuongCuaNguoi.get(khoaNguoi(p)) || []);
+  const nguoiTrungGiuong = p => giuongKhacCua(p).length > 1;
+
+  // Quá giờ hẹn ra viện: so với ĐỒNG HỒ THẬT, không so với mốc dữ liệu — người xếp giường hỏi
+  // "tới giờ này còn ai đáng lẽ đã ra", mà mốc dữ liệu có thể đã cũ 5–10 phút.
+  function quaGioHen(p) {
+    if (!p.sap_ra || !p.ra) return false;
+    const t = new Date(String(p.ra).replace(" ", "T"));
+    return !isNaN(t) && t < new Date();
+  }
+  /* "Nằm ghép" = từ 2 hộ trở lên trên một giường. Với giường 2 hộ thì loại các trường hợp giải
+     thích được bằng TRÙNG GIƯỜNG / GIỮ CHỖ (chúng đã có nút riêng) → nút này chỉ còn ca nằm ghép
+     thật: đo 11:00 ra 109 giường (78 giường 2 hộ + 31 giường ≥3 người) thay vì 242 như nhãn cũ.
+     ≥3 người thì luôn tính, dù có ai trùng giường hay không — ba người một giường là bất thường
+     kể cả khi một bản ghi là rác (vd B703 Khoa Phụ 8–11 người: HIS dùng làm "giường đợi"). */
+  function ghepThat(g) {
+    const ppl = g.nguoi || [];
+    if ((g.ho || 0) < 2) return false;
+    if ((g.ho || 0) >= 3) return true;
+    return !ppl.some(p => p.giu) && !ppl.some(nguoiTrungGiuong);
+  }
+  /* Dấu hiệu của một giường — TẬP HỢP, không phải ưu tiên (một giường mang được nhiều dấu hiệu).
+     Đây là chỗ luật "lọc xét tập hợp · màu xét ưu tiên" (user chốt 2026-08-10) tiếp tục sống. */
+  function sigOf(g) {
+    const ppl = g.nguoi || [];
+    const s = new Set();
+    if (!ppl.length) return s;
+    if (ppl.some(p => p.sap_ra)) s.add("sap_ra");
+    if (ppl.some(quaGioHen)) s.add("qua_hen");
+    if (ppl.some(p => p.giu)) s.add("giu");
+    if (ghepThat(g)) s.add("ghep");
+    if (ppl.some(nguoiTrungGiuong)) s.add("trung");
+    return s;
+  }
+  const dangLoc = () => !!q || !!ttTruc || sigLoc.size > 0 || preset;
 
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const n = v => (v ?? 0).toLocaleString("vi-VN");
@@ -189,8 +244,15 @@
       // Giường KHÔNG còn trống, nhưng đứng ở cửa phòng sẽ không thấy ai → phải nói ra, kẻo điều
       // dưỡng tưởng dữ liệu sai rồi xếp thêm người vào. Xem CLAUDE.md §13.2 · log lỗi L10.
       const giu = p.giu ? ` <span class="g-giu" title="Giường đã có người đăng ký giữ chỗ">${esc(p.giu)}</span>` : "";
+      /* TRÙNG GIƯỜNG: HIS đang gán người này ở giường khác nữa. Phải nói ra tên giường kia, kẻo
+         hai thẻ đỏ "2 người bệnh" cạnh nhau với y hệt hai cái tên (B511.01 · B511.02) đọc ra là
+         "phòng này 4 người". Chỉ nêu SỰ VIỆC, không kết luận giường nào mới là thật (R09). */
+      const khac = giuongKhacCua(p).filter(s => s !== g.so_hieu);
+      const dup = khac.length
+        ? ` <span class="g-dup" title="HIS đang gán người bệnh này ở ${khac.length + 1} giường cùng lúc — cần soát lại, giường còn lại có thể đã trống">cũng ở ${esc(khac.slice(0, 2).join(" · "))}${khac.length > 2 ? " +" + (khac.length - 2) : ""}</span>`
+        : "";
       return `<div class="who" title="${esc(tip)}">
-        <span class="${con ? "kid" : "nm"}">${con ? "↳ " : ""}${esc(p.ten)}</span>${tt}${giu}
+        <span class="${con ? "kid" : "nm"}">${con ? "↳ " : ""}${esc(p.ten)}</span>${tt}${giu}${dup}
         <span class="det">${p.tuoi ? " · " + esc(p.tuoi) : ""}${p.ngay ? " · " + p.ngay + " ngày" : ""}${ra}</span>
         ${p.ba ? `<div class="ba" title="Số vào viện (mã bệnh án)">${esc(p.ba)}</div>` : ""}
         </div>`;
@@ -239,9 +301,23 @@
       + `dù số hiệu không theo mã phòng ${esc(r.ma)}.</div>`;
   }
 
-  // Lọc trạng thái và từ khóa CỘNG DỒN (VÀ): gõ "h6" rồi bấm "Giường trống" = giường trống của H6.
+  /* Ba lớp CỘNG DỒN (VÀ): trục tình trạng · trục dấu hiệu · từ khóa.
+     Trong trục dấu hiệu thì HOẶC. Preset thay cho cả 2 trục (nó là HOẶC chéo trục). */
   function match(g, room) {
-    if (ttLoc.size && !loaiLoc(g).some(t => ttLoc.has(t))) return false;
+    const co = (g.nguoi || []).length > 0;
+    if (preset) {
+      if (co && !sigOf(g).has("sap_ra")) return false;      // giữ: trống · hoặc có hẹn giờ ra
+    } else {
+      if (ttTruc === "trong" && co) return false;
+      if (ttTruc === "nguoi" && !co) return false;
+      if (sigLoc.size) {
+        if (!co) return false;                              // dấu hiệu chỉ có ở giường có người
+        const s = sigOf(g);
+        let ok = false;
+        for (const t of sigLoc) if (s.has(t)) { ok = true; break; }
+        if (!ok) return false;
+      }
+    }
     if (!q) return true;
     // Tìm được cả bằng SỐ VÀO VIỆN: cầm giấy tờ trên tay gõ số là ra ngay giường (user chốt).
     const hay = (g.so_hieu + " " + room.ten + " " + (room.ma || "") + " " +
@@ -267,7 +343,12 @@
   function tomTatLoc() {
     if (!dangLoc()) return "";
     const phan = [];
-    if (ttLoc.size) phan.push(Object.keys(TEN_LOAI).filter(t => ttLoc.has(t)).map(t => TEN_LOAI[t]).join(" hoặc "));
+    if (preset) phan.push("chỗ sắp có (trống hoặc sắp ra viện)");
+    else {
+      if (ttTruc) phan.push(TEN_TT[ttTruc]);
+      if (sigLoc.size) phan.push(Object.keys(TEN_SIG).filter(t => sigLoc.has(t))
+        .map(t => TEN_SIG[t]).join(" hoặc "));
+    }
     if (q) phan.push(`từ khóa “${esc(q)}”`);
     return `<div class="g-flt-sum">Đang lọc: <b>${phan.join(" · ")}</b>
       <span class="num">${n(dem.g)} giường · ${n(dem.p)} phòng · ${n(dem.k)} khoa</span></div>`;
@@ -323,18 +404,33 @@
       if (open) html += "</div>";
     }
 
-    // Đang lọc thì ẩn: nhóm này là NGƯỜI CHƯA CÓ GIƯỜNG, không thuộc 4 trạng thái giường đang lọc.
-    if (k.chua_xep.length && !dangLoc()) {
+    /* CUNG và CẦU phải ở cùng một màn (chỉnh 2026-08-10): khi người dùng lọc "Trống" / "Chỗ sắp
+       có" thì việc thật của họ là GHÉP người đang chờ vào chỗ vừa tìm ra — bản cũ lại ẩn hẳn nhóm
+       này đúng lúc đó (156 người chờ tiếp nhận vào khoa biến mất). Nay: không lọc → hiện đủ như
+       trước · đang lọc CHỖ → chỉ còn nhóm "Chờ tiếp nhận vào khoa" (người ĐANG CẦN bố trí giường)
+       · đang lọc dấu hiệu/từ khóa → vẫn ẩn, vì nhóm này không nằm trên giường nào để mà có dấu hiệu. */
+    const CHO_VAO = "Chờ tiếp nhận vào khoa";
+    const locCho = !q && (preset || ttTruc === "trong");
+    if (k.chua_xep.length && (!dangLoc() || locCho)) {
       // Nhóm theo TRẠNG THÁI: "chờ tiếp nhận vào khoa" = đang cần bố trí giường (việc phải làm),
       // khác hẳn trẻ sơ sinh nằm cùng mẹ (không cần giường). Gộp chung một đống thì mất mất việc.
+      const chiChoVao = dangLoc();
       const nhom = {};
-      k.chua_xep.forEach(p => (nhom[ttNhan(p.tt_ma) || "Không rõ trạng thái"] ||= []).push(p));
-      const uu = ["Chờ tiếp nhận vào khoa", "Đang chuyển khoa", "Chờ hoàn tất thủ tục ra viện"];
+      k.chua_xep.forEach(p => {
+        const t = ttNhan(p.tt_ma) || "Không rõ trạng thái";
+        if (chiChoVao && t !== CHO_VAO) return;
+        (nhom[t] ||= []).push(p);
+      });
+      const uu = [CHO_VAO, "Đang chuyển khoa", "Chờ hoàn tất thủ tục ra viện"];
       const keys = Object.keys(nhom).sort((a, b) =>
         (uu.indexOf(a) + 1 || 9) - (uu.indexOf(b) + 1 || 9) || nhom[b].length - nhom[a].length);
-      html += `<div class="g-unassigned"><h3>${k.chua_xep.length} người bệnh chưa xếp giường</h3>
-        <div class="hint">HIS để trống cột Giường–Phòng. Trẻ sơ sinh nằm cùng mẹ thì không cần giường
-          riêng; nhóm <b>chờ tiếp nhận vào khoa</b> mới là người đang cần bố trí giường.</div>
+      const tong = keys.reduce((s, kk) => s + nhom[kk].length, 0);
+      if (tong) html += `<div class="g-unassigned${chiChoVao ? " nho" : ""}">
+        <h3>${n(tong)} người bệnh ${chiChoVao ? "đang cần bố trí giường" : "chưa xếp giường"}</h3>
+        <div class="hint">${chiChoVao
+          ? `Đây là phía <b>cầu</b> của khoa này — ghép vào những chỗ đang hiện ở trên.`
+          : `HIS để trống cột Giường–Phòng. Trẻ sơ sinh nằm cùng mẹ thì không cần giường
+             riêng; nhóm <b>chờ tiếp nhận vào khoa</b> mới là người đang cần bố trí giường.`}</div>
         ${keys.map(kk => `<div class="g-ugrp"><b>${esc(kk)}</b> — ${nhom[kk].length} người
           <div class="g-ulist">${nhom[kk].map(p =>
         `<div>${esc(p.ten)}${p.tuoi ? " · " + esc(p.tuoi) : ""}</div>`).join("")}</div></div>`).join("")}
@@ -376,15 +472,57 @@
   // Vẽ lại phần kết quả sau khi đổi bộ lọc/từ khóa: lọc xong thì khoa nào nằm dưới thanh dính đã khác.
   function veLaiKetQua() {
     renderBody();
+    /* ⚠️ ĐO LẠI thanh dính: bật/tắt bộ lọc làm nút "Bỏ lọc" hiện/ẩn, có bề ngang màn hình (đo thật:
+       1366px) hàng lọc vì thế xuống 2 dòng ⇒ thanh dính cao thêm 35px. `--sticky-h` cũ thì
+       `scroll-margin-top` của khoa bị thiếu đúng 35px → bấm chọn khoa xong tiêu đề khoa nằm KHUẤT
+       dưới thanh. Đây là biến thể của bẫy số 2 đã ghi ở CLAUDE.md §13.1. */
+    doThanhDinh();
     khoaDangXem = -2; capNhatNhanKhoa();
   }
 
+  /* Đếm SỐ GIƯỜNG của từng nhóm trên TOÀN BỘ 14 khoa rồi in lên nút (Baymard: hiện số cạnh mỗi
+     lựa chọn để người dùng khỏi bấm mù và khỏi rơi vào tổ hợp 0 kết quả).
+     Cố ý KHÔNG cho số chạy theo bộ lọc đang bật: đang gõ tìm kiếm mà 8 con số nhảy theo từng ký
+     tự thì không ai đọc kịp — số của phần ĐANG XEM đã nằm ở dòng `.g-flt-sum`.
+     ⚠️ Đếm theo GIƯỜNG. Thẻ KPI "Sắp ra viện" đếm theo NGƯỜI nên hai số khác nhau là ĐÚNG
+     (206 giường / 218 người). Đơn vị ghi rõ trong tooltip từng nút — chữa bằng cách NÓI RA đơn vị,
+     không phải bằng cách bỏ số đi (bản cũ bỏ số nên người dùng không biết bấm ra bao nhiêu). */
+  function demNhom() {
+    const d = { all: 0, trong: 0, nguoi: 0, preset: 0, sap_ra: 0, qua_hen: 0, giu: 0, ghep: 0, trung: 0 };
+    for (const k of D.khoas) for (const r of k.phong) for (const g of r.giuong) {
+      d.all++;
+      if (!(g.nguoi || []).length) { d.trong++; d.preset++; continue; }
+      d.nguoi++;
+      const s = sigOf(g);
+      for (const t of s) d[t]++;
+      if (s.has("sap_ra")) d.preset++;
+    }
+    return d;
+  }
+
   function capNhatNutLoc() {
-    $$(".g-lg").forEach(b => b.setAttribute("aria-pressed", ttLoc.has(b.dataset.tt) ? "true" : "false"));
-    const c = $("#g-lgClear"); if (c) c.classList.toggle("an", ttLoc.size === 0);
+    const d = D ? demNhom() : null;
+    const put = (el, v) => { if (el && v != null) el.textContent = n(v); };
+    $$(".g-sg").forEach(b => {
+      b.setAttribute("aria-checked", (!preset && ttTruc === b.dataset.tt) ? "true" : "false");
+      if (d) put(b.querySelector(".c"), d[b.dataset.tt || "all"]);
+    });
+    $$(".g-lg").forEach(b => {
+      b.setAttribute("aria-pressed", (!preset && sigLoc.has(b.dataset.sg)) ? "true" : "false");
+      if (d) put(b.querySelector(".c"), d[b.dataset.sg]);
+    });
+    const p = $("#g-preset");
+    if (p) {
+      p.setAttribute("aria-pressed", preset ? "true" : "false");
+      if (d) put(p.querySelector(".c"), d.preset);
+    }
+    const c = $("#g-lgClear"); if (c) c.classList.toggle("an", !dangLoc());
   }
 
   function veTatCa() {
+    // Dựng lại chỉ số "người ở nhiều giường" TRƯỚC mọi lần vẽ: sigOf()/ghepThat() đọc nó, và dữ
+    // liệu đổi 5'/lần → dùng chỉ số của vòng trước là gắn cờ trùng giường cho người đã trả giường.
+    chiSoTrungGiuong();
     renderKpis(); renderKhoas(); renderBody(); capNhatNutLoc();
     doThanhDinh(); khoaDangXem = -2; capNhatNhanKhoa(); chinhNutTop();
     // Huy hiệu tab = số người ĐANG CẦN bố trí giường (chờ tiếp nhận vào khoa) — con số HÀNH ĐỘNG,
@@ -402,16 +540,37 @@
   function ganSuKien() {
     if (daGan) return; daGan = true;
     $("#g-q").addEventListener("input", e => {
-      q = e.target.value.trim().toLowerCase(); veLaiKetQua();
+      q = e.target.value.trim().toLowerCase(); capNhatNutLoc(); veLaiKetQua();
     });
-    // Chú giải màu = nút lọc. Bấm lại = tắt; chọn nhiều trạng thái = HOẶC (xem match()).
-    $$(".g-lg").forEach(b => b.onclick = () => {
-      const t = b.dataset.tt;
-      if (ttLoc.has(t)) ttLoc.delete(t); else ttLoc.add(t);
+    // TRỤC 1 — chọn MỘT (loại trừ nhau): bấm là thay giá trị, không cộng thêm.
+    $$(".g-sg").forEach(b => b.onclick = () => {
+      preset = false; ttTruc = b.dataset.tt;
       moKhoa(false);          // ĐT: bảng khoa đang bung thì che mất kết quả vừa lọc
       capNhatNutLoc(); veLaiKetQua();
     });
-    $("#g-lgClear").onclick = () => { ttLoc.clear(); capNhatNutLoc(); veLaiKetQua(); };
+    // TRỤC 2 — chọn NHIỀU (HOẶC trong trục, VÀ với trục 1). Bấm lại = tắt.
+    $$(".g-lg").forEach(b => b.onclick = () => {
+      const t = b.dataset.sg;
+      if (preset) { preset = false; ttTruc = ""; }     // preset là chế độ riêng → bấm chip là rời nó
+      if (sigLoc.has(t)) sigLoc.delete(t); else sigLoc.add(t);
+      /* Dấu hiệu chỉ tồn tại ở giường CÓ NGƯỜI ⇒ để trục 1 ở "Trống" thì chắc chắn ra 0 giường.
+         Baymard: đừng để người dùng rơi vào tổ hợp không thể có kết quả → tự chuyển sang "Có
+         người". Segmented control dịch sang thấy được nên đây không phải thay đổi ngầm. */
+      if (sigLoc.size && ttTruc === "trong") ttTruc = "nguoi";
+      moKhoa(false);
+      capNhatNutLoc(); veLaiKetQua();
+    });
+    // PRESET: "chỗ sắp có" = trống HOẶC sắp ra viện — HOẶC chéo trục nên phải là chế độ riêng.
+    $("#g-preset").onclick = () => {
+      preset = !preset;
+      if (preset) { ttTruc = ""; sigLoc.clear(); }
+      moKhoa(false); capNhatNutLoc(); veLaiKetQua();
+    };
+    $("#g-lgClear").onclick = () => {
+      preset = false; ttTruc = ""; sigLoc.clear();
+      const inp = $("#g-q"); if (inp) { inp.value = ""; q = ""; }   // "Bỏ lọc" phải bỏ CẢ từ khóa
+      capNhatNutLoc(); veLaiKetQua();
+    };
     // gõ tìm thì gập bảng khoa lại — kết quả tìm nằm ngay dưới, đừng để bảng che
     $("#g-q").addEventListener("focus", () => moKhoa(false));
     $("#g-pick").onclick = () => moKhoa();
