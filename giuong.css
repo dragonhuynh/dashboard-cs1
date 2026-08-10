@@ -56,6 +56,19 @@
 /* Vạch ngăn giữa PRESET (một câu hỏi) và hai TRỤC (thuộc tính của giường) — cấu trúc nói ra sự
    khác loại, thay vì để người dùng tự đoán từ vị trí. */
 #tab-giuong #g-fl1 { padding-left: 9px; border-left: 1px solid var(--line); }
+/* Từ khi có nút thứ 10 (preset phía CẦU + nhãn "Trùng khác phòng" dài hơn) thì hàng lọc KHÔNG còn
+   vừa một dòng ở 1440px. Để nó tự gói thì nhãn "CẦN SOÁT" bị bỏ lại cuối dòng 1, rời khỏi nhóm chip
+   mà nó dán nhãn — đọc ra vô nghĩa. Ép ngắt dòng NGAY TRƯỚC nhãn: dòng 1 = tác vụ + tình trạng ·
+   dòng 2 = dấu hiệu cần soát. Chỉ áp cho desktop; ĐT là một hàng cuộn ngang (`nowrap`) nên
+   `flex-basis` phải trả về auto, kẻo nó kéo nhãn rộng 100% và đẩy 5 chip ra khỏi tầm. */
+@media (min-width: 721px) {
+  #tab-giuong #g-fl2 { flex-basis: 100%; }
+  /* Ô tìm kiếm KHÔNG cần trọn 1.400px — nhường chỗ để nó đứng CÙNG DÒNG với hàng lọc. Đo thật ở
+     1440px: thanh dính 460 → 424px (ĐT không đổi, vẫn 159px). Thanh dính là thứ che mất sơ đồ
+     giường nên mỗi 35px ở đây đáng giá; 300px vẫn đủ gõ tên người bệnh/số giường. */
+  #tab-giuong .g-tools input { flex: 0 1 300px; }
+  #tab-giuong .g-fbar { flex: 1 1 auto; }
+}
 /* Biểu tượng một màu, ăn theo màu chữ của nút (kể cả lúc nút bật đổi màu) */
 #tab-giuong .gi { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor;
   stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
