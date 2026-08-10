@@ -244,6 +244,9 @@
       // Giường KHÔNG còn trống, nhưng đứng ở cửa phòng sẽ không thấy ai → phải nói ra, kẻo điều
       // dưỡng tưởng dữ liệu sai rồi xếp thêm người vào. Xem CLAUDE.md §13.2 · log lỗi L10.
       const giu = p.giu ? ` <span class="g-giu" title="Giường đã có người đăng ký giữ chỗ">${esc(p.giu)}</span>` : "";
+      /* `giu_den` chỉ có ở người mà nguồn 1 KHÔNG có hồ sơ (≈10 ca): sơ đồ HIS ghi giường được giữ
+         tới giờ đó. Nói đúng thứ HIS ghi — KHÔNG suy thành "giờ ra viện" (đó là trường khác). */
+      const den = p.giu_den ? ` <span class="g-giu" title="Sơ đồ giường của HIS ghi giường này được giữ tới thời điểm đó">giữ tới ${hhmm(p.giu_den)} ${dm(p.giu_den)}</span>` : "";
       /* TRÙNG GIƯỜNG: HIS đang gán người này ở giường khác nữa. Phải nói ra tên giường kia, kẻo
          hai thẻ đỏ "2 người bệnh" cạnh nhau với y hệt hai cái tên (B511.01 · B511.02) đọc ra là
          "phòng này 4 người". Chỉ nêu SỰ VIỆC, không kết luận giường nào mới là thật (R09). */
@@ -252,7 +255,7 @@
         ? ` <span class="g-dup" title="HIS đang gán người bệnh này ở ${khac.length + 1} giường cùng lúc — cần soát lại, giường còn lại có thể đã trống">cũng ở ${esc(khac.slice(0, 2).join(" · "))}${khac.length > 2 ? " +" + (khac.length - 2) : ""}</span>`
         : "";
       return `<div class="who" title="${esc(tip)}">
-        <span class="${con ? "kid" : "nm"}">${con ? "↳ " : ""}${esc(p.ten)}</span>${tt}${giu}${dup}
+        <span class="${con ? "kid" : "nm"}">${con ? "↳ " : ""}${esc(p.ten)}</span>${tt}${giu}${den}${dup}
         <span class="det">${p.tuoi ? " · " + esc(p.tuoi) : ""}${p.ngay ? " · " + p.ngay + " ngày" : ""}${ra}</span>
         ${p.ba ? `<div class="ba" title="Số vào viện (mã bệnh án)">${esc(p.ba)}</div>` : ""}
         </div>`;
