@@ -61,13 +61,21 @@
    mà nó dán nhãn — đọc ra vô nghĩa. Ép ngắt dòng NGAY TRƯỚC nhãn: dòng 1 = tác vụ + tình trạng ·
    dòng 2 = dấu hiệu cần soát. Chỉ áp cho desktop; ĐT là một hàng cuộn ngang (`nowrap`) nên
    `flex-basis` phải trả về auto, kẻo nó kéo nhãn rộng 100% và đẩy 5 chip ra khỏi tầm. */
+/* ===== DESKTOP: hai trục xếp thành 2 DÒNG THẬT, dòng 1 dùng chung với ô tìm kiếm =====
+   Từ khi có nút thứ 10 (preset phía CẦU + nhãn "Trùng khác phòng"), hàng lọc không còn vừa một dòng
+   ở 1440px. Ba cách đã thử và ĐO:
+     · để tự gói  → nhãn "CẦN SOÁT" bị bỏ lại cuối dòng 1, rời khỏi nhóm chip nó dán nhãn (vô nghĩa);
+     · `flex-basis:100%` cho nhãn → nhãn tự chiếm TRỌN một hàng ⇒ 4 hàng, thanh dính 460px (51% màn 900);
+     · cách chốt (dưới đây) → 2 hàng, thanh dính **~395px**, mỗi nhãn nằm cùng nhóm của nó.
+   `display: contents` cho `.g-fbar` + `.g-frow` đầu: các nút của trục 1 tan vào `.g-tools` nên đứng
+   ngay cạnh ô tìm (ô tìm không cần 1.400px — 300px đủ gõ tên/số giường). `.g-frow` thứ hai giữ hộp
+   thật + `flex: 1 1 100%` nên luôn là một hàng riêng, nhãn CẦN SOÁT dính liền 5 chip.
+   ⚠️ Không áp cho ĐT: ở đó cả hàng là MỘT dải cuộn ngang 44px (xem khối `max-width: 720px`). */
 @media (min-width: 721px) {
-  #tab-giuong #g-fl2 { flex-basis: 100%; }
-  /* Ô tìm kiếm KHÔNG cần trọn 1.400px — nhường chỗ để nó đứng CÙNG DÒNG với hàng lọc. Đo thật ở
-     1440px: thanh dính 460 → 424px (ĐT không đổi, vẫn 159px). Thanh dính là thứ che mất sơ đồ
-     giường nên mỗi 35px ở đây đáng giá; 300px vẫn đủ gõ tên người bệnh/số giường. */
   #tab-giuong .g-tools input { flex: 0 1 300px; }
-  #tab-giuong .g-fbar { flex: 1 1 auto; }
+  #tab-giuong .g-fbar, #tab-giuong .g-frow:first-child { display: contents; }
+  #tab-giuong .g-frow:last-child { display: flex; flex-wrap: wrap; align-items: center;
+    gap: 7px; flex: 1 1 100%; min-width: 0; }
 }
 /* Biểu tượng một màu, ăn theo màu chữ của nút (kể cả lúc nút bật đổi màu) */
 #tab-giuong .gi { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor;
