@@ -29,11 +29,15 @@
        "trống"/"có người" thành 2 chip HOẶC nên bấm cả hai = 1.993 giường = y hệt không lọc.
      TRỤC 2 `sigLoc` — dấu hiệu cần soát (tập con của "có người"): chọn NHIỀU, HOẶC trong trục,
        VÀ với trục 1. Nhờ vậy "Có người + Sắp ra viện" nay ra 206 giường thay vì 1.472 như trước.
-     PRESET `preset` — "chỗ sắp có" = trống HOẶC sắp ra viện. Đây là HOẶC *chéo trục*, không diễn
-       đạt được bằng 2 hàng nút nên phải là một nút riêng. */
+     PRESET `preset` — hai câu hỏi tác vụ, mỗi câu một nút, chọn MỘT (chúng loại trừ nhau về ý nghĩa):
+       · `"sap_co"`    = "chỗ sắp có" = trống HOẶC sắp ra viện → HOẶC *chéo trục*, không diễn đạt
+                         được bằng 2 hàng nút nên phải là nút riêng.
+       · `"khoa_thieu"` = chỉ những KHOA đang thiếu chỗ (cầu > cung) — lọc ở cấp KHOA, không phải cấp
+                         giường, nên cũng không nhét được vào 2 trục. Thêm 2026-08-10 sau phản biện:
+                         trước đó cả hàng lọc chỉ nói về cung, không có gì nói về cầu. */
   let ttTruc = "";
   const sigLoc = new Set();
-  let preset = false;
+  let preset = "";
 
   const TEN_TT = { trong: "giường trống", nguoi: "giường có người" };
   const TEN_SIG = { sap_ra: "sắp ra viện", qua_hen: "quá giờ hẹn ra viện",
@@ -67,12 +71,25 @@
       for (const p of (g.nguoi || [])) {
         const key = khoaNguoi(p);
         if (!m.has(key)) m.set(key, []);
-        m.get(key).push(g.so_hieu);
+        // Lưu CẢ TÊN PHÒNG, không chỉ số hiệu giường: mức nghiêm trọng của "trùng giường" phụ thuộc
+        // vào việc hai giường có cùng phòng hay không (xem `nguoiTrungKhacPhong` ngay dưới).
+        m.get(key).push({ sh: g.so_hieu, ph: r.ten });
       }
     dsGiuongCuaNguoi = m;
   }
   const giuongKhacCua = p => (dsGiuongCuaNguoi.get(khoaNguoi(p)) || []);
   const nguoiTrungGiuong = p => giuongKhacCua(p).length > 1;
+  /* TRÙNG GIƯỜNG **KHÁC PHÒNG** — dùng cho NÚT LỌC (chỉnh 2026-08-10 sau phản biện).
+     Nút cũ đếm mọi kiểu trùng: 417/1.413 giường có người = **30%** ⇒ cờ phủ 1/3 dữ liệu thì người
+     dùng học cách bỏ qua nó (alarm fatigue). Tách theo mức nghiêm trọng, đo cùng mốc:
+       · cùng MỘT phòng (đổi giường trong phòng): 116 người — HIS làm vậy là bình thường, vô hại
+       · cùng khoa nhưng KHÁC PHÒNG: 96 người   · KHÁC KHOA: 27 người
+     ⇒ Nút chỉ giữ **khác phòng (123 người)** — đó là lúc điều dưỡng đi tìm sẽ tới sai phòng.
+     ⚠️ Chip `⧉ cũng ở …` trên thẻ giường VẪN gắn cho cả 417 (kể cả cùng phòng): nó giải thích tại
+     chỗ vì sao hai thẻ mang cùng một tên, không tốn thêm hàng nào và không phải là cảnh báo.
+     ⚠️ `ghepThat()` vẫn dùng `nguoiTrungGiuong` (mọi kiểu trùng): giường 2 hộ mà do đổi giường
+     TRONG CÙNG PHÒNG thì vẫn không phải nằm ghép thật — loại bỏ đúng như trước. */
+  const nguoiTrungKhacPhong = p => new Set(giuongKhacCua(p).map(v => v.ph)).size > 1;
 
   // Quá giờ hẹn ra viện: so với ĐỒNG HỒ THẬT, không so với mốc dữ liệu — người xếp giường hỏi
   // "tới giờ này còn ai đáng lẽ đã ra", mà mốc dữ liệu có thể đã cũ 5–10 phút.
@@ -102,9 +119,18 @@
     if (ppl.some(quaGioHen)) s.add("qua_hen");
     if (ppl.some(p => p.giu)) s.add("giu");
     if (ghepThat(g)) s.add("ghep");
-    if (ppl.some(nguoiTrungGiuong)) s.add("trung");
+    if (ppl.some(nguoiTrungKhacPhong)) s.add("trung");   // chỉ mức KHÁC PHÒNG — xem chú thích trên
     return s;
   }
+
+  /* ===== PHÍA CẦU: KHOA THIẾU CHỖ (thêm 2026-08-10 sau phản biện) =====
+     Cả 8 nút lọc đều nói về CUNG (giường). Nhưng câu hỏi số 1 của người xếp giường là "khoa nào CẦU
+     vượt CUNG" — mà muốn biết thì phải đọc 14 thẻ khoa rồi tự trừ nhẩm. Đo mốc 12:50: Khoa Phụ
+     (26 trống / 37 chờ vào) · Sản M (8/14) · Tạo Hình Thẩm Mỹ (0 giường / 2 chờ) = 3 khoa thiếu chỗ.
+     `cho_vao` = người **Chờ tiếp nhận vào khoa** (mã 20) = người ĐANG CẦN bố trí giường, không phải
+     trẻ sơ sinh nằm cùng mẹ — xem §13.1. Thiếu = cầu − cung, chỉ tính khi > 0. */
+  const thieuCho = k => Math.max(0, ((k.cho_vao || 0) - (k.giuong_trong || 0)));
+  const dsKhoaThieu = () => (D ? D.khoas.filter(k => thieuCho(k) > 0) : []);
   const dangLoc = () => !!q || !!ttTruc || sigLoc.size > 0 || preset;
 
   const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -176,13 +202,21 @@
     $("#g-khoas").innerHTML = D.khoas.map((k, i) => {
       const cs = k.cong_suat ?? 0;
       const lv = cs >= 90 ? "hi" : (cs >= 70 ? "mid" : "");
-      return `<button class="g-kh" type="button" data-i="${i}">
+      const thieu = thieuCho(k);
+      /* KHOA 0 GIƯỜNG (đo: Khoa Tạo Hình Thẩm Mỹ) — "0/0 giường · trống 0" đọc ra là ĐÃ KÍN, trong
+         khi sự thật là HIS chưa khai giường nào cho khoa đó; công suất cũng không tính được. Đây
+         đúng kiểu "số 0 nói dối im lặng" (log lỗi §luật 5) → nói thẳng ra, đừng để lẫn nhóm kín. */
+      const khongGiuong = !k.tong_giuong;
+      return `<button class="g-kh${thieu ? " thieu" : ""}" type="button" data-i="${i}">
         <b>${esc(k.ten)}</b>
-        <div class="num"><em>${n(k.giuong_co_nguoi)}</em>/${n(k.tong_giuong)} giường
-          · <span class="fr">trống <span class="fn">${n(k.giuong_trong)}</span></span>
-          ${k.sap_ra ? ` · sắp ra ${n(k.sap_ra)}` : ""}
-          ${k.cho_vao ? ` · <span class="wt">chờ vào ${n(k.cho_vao)}</span>` : ""}</div>
-        <div class="bar"><i class="${lv}" style="width:${cs}%"></i></div>
+        <div class="num">${khongGiuong
+          ? `<span class="chuakhai">chưa khai giường trên HIS</span>`
+          : `<em>${n(k.giuong_co_nguoi)}</em>/${n(k.tong_giuong)} giường
+             · <span class="fr">trống <span class="fn">${n(k.giuong_trong)}</span></span>
+             ${k.sap_ra ? ` · sắp ra ${n(k.sap_ra)}` : ""}`}
+          ${k.cho_vao ? ` · <span class="wt">chờ vào ${n(k.cho_vao)}</span>` : ""}
+          ${thieu ? ` · <span class="tt-thieu" title="Số người chờ tiếp nhận vào khoa nhiều hơn số giường trống — cầu vượt cung">thiếu ${n(thieu)} chỗ</span>` : ""}</div>
+        ${khongGiuong ? "" : `<div class="bar"><i class="${lv}" style="width:${cs}%"></i></div>`}
       </button>`;
     }).join("");
     $$(".g-kh").forEach(b => b.onclick = () => {
@@ -250,7 +284,9 @@
       /* TRÙNG GIƯỜNG: HIS đang gán người này ở giường khác nữa. Phải nói ra tên giường kia, kẻo
          hai thẻ đỏ "2 người bệnh" cạnh nhau với y hệt hai cái tên (B511.01 · B511.02) đọc ra là
          "phòng này 4 người". Chỉ nêu SỰ VIỆC, không kết luận giường nào mới là thật (R09). */
-      const khac = giuongKhacCua(p).filter(s => s !== g.so_hieu);
+      // `khac` = các giường KHÁC mà HIS đang gán cùng người này (kể cả cùng phòng — xem chú thích
+      // `nguoiTrungKhacPhong`: chip gắn cho MỌI kiểu trùng, chỉ NÚT LỌC mới thu về mức khác phòng).
+      const khac = giuongKhacCua(p).filter(v => v.sh !== g.so_hieu).map(v => v.sh);
       const dup = khac.length
         ? ` <span class="g-dup" title="HIS đang gán người bệnh này ở ${khac.length + 1} giường cùng lúc — cần soát lại, giường còn lại có thể đã trống">cũng ở ${esc(khac.slice(0, 2).join(" · "))}${khac.length > 2 ? " +" + (khac.length - 2) : ""}</span>`
         : "";
@@ -308,8 +344,12 @@
      Trong trục dấu hiệu thì HOẶC. Preset thay cho cả 2 trục (nó là HOẶC chéo trục). */
   function match(g, room) {
     const co = (g.nguoi || []).length > 0;
-    if (preset) {
+    if (preset === "sap_co") {
       if (co && !sigOf(g).has("sap_ra")) return false;      // giữ: trống · hoặc có hẹn giờ ra
+    } else if (preset === "khoa_thieu") {
+      /* Lọc ở cấp KHOA (làm trong khoaHtml) → tới đây thì mọi giường của khoa thiếu chỗ đều được
+         giữ: người điều phối cần thấy TOÀN CẢNH khoa đó, kể cả giường đang có người, để biết chỗ
+         sắp trống và ai đang nằm. Chỉ còn từ khóa cộng dồn phía dưới. */
     } else {
       if (ttTruc === "trong" && co) return false;
       if (ttTruc === "nguoi" && !co) return false;
@@ -346,8 +386,11 @@
   function tomTatLoc() {
     if (!dangLoc()) return "";
     const phan = [];
-    if (preset) phan.push("chỗ sắp có (trống hoặc sắp ra viện)");
-    else {
+    if (preset === "sap_co") phan.push("chỗ sắp có (trống hoặc sắp ra viện)");
+    else if (preset === "khoa_thieu") {
+      const ds = dsKhoaThieu();
+      phan.push(`${ds.length} khoa đang thiếu chỗ (${ds.map(k => `${esc(k.ten)} thiếu ${thieuCho(k)}`).join(" · ")})`);
+    } else {
       if (ttTruc) phan.push(TEN_TT[ttTruc]);
       if (sigLoc.size) phan.push(Object.keys(TEN_SIG).filter(t => sigLoc.has(t))
         .map(t => TEN_SIG[t]).join(" hoặc "));
@@ -361,21 +404,25 @@
       <button type="button" class="g-sum-clear" data-clear="1">✕ Bỏ lọc</button></div>`;
   }
 
-  /* ĐANG LỌC: dòng phòng vẫn đếm CẢ PHÒNG (`r.giuong`) nhưng chỉ VẼ giường khớp (`r.hien`) ⇒ người
-     xem đọc "cả phòng: 5 có người · 1 trống" mà chỉ thấy 1 chip trống, hoặc thấy 2 thẻ người mà
-     không thấy chip trống nào → kết luận phần mềm sai. User báo đúng như vậy HAI lần trong một buổi
-     (Phòng E108 · Phòng N503). Chữa bằng cách NÓI RA phần bị ẩn (luật 14 · log lỗi L11): số ẩn =
-     số cả phòng − số đang vẽ, tính từ chính thứ đang vẽ nên không thể lệch. */
-  function anLoc(veCoNguoi, veTrong, coNguoi, conTrong) {
-    const an = [], aNg = coNguoi - veCoNguoi, aTr = conTrong - veTrong;
-    if (aNg > 0) an.push(`${aNg} có người`);
-    if (aTr > 0) an.push(`${aTr} trống`);
-    return an.length
-      ? ` · <span class="rmeta-an" title="Những giường này không thuộc bộ lọc đang bật nên không được vẽ. Bấm “Bỏ lọc” để xem đủ cả phòng.">đang ẩn: ${an.join(" · ")}</span>`
+  /* GIƯỜNG TRỐNG LUÔN VẼ HẾT, KỂ CẢ ĐANG LỌC — và dòng phòng LUÔN nói sự thật của CẢ PHÒNG
+     (`4 giường có người · 1 trống`), không còn `4/5 giường khớp bộ lọc` (user chốt 2026-08-10):
+     - "khớp bộ lọc" là chữ của phần mềm, không phải chữ của người xếp giường: đọc phân số rồi phải
+       tự trừ nhẩm mới biết phòng còn mấy chỗ — đúng lớp lỗi "nhãn bắt người đọc học từ điển"
+       (`ngon-ngu-ui.md`). Dòng phòng nay giống nhau ở mọi bộ lọc nên không phải đọc theo 2 cách.
+     - Chỗ TRỐNG là câu hỏi số 1 của người xếp giường, mà nó chỉ là CHIP nhỏ (không ngốn chỗ như
+       thẻ người) ⇒ ẩn nó theo bộ lọc là ẩn đúng thứ họ đang đi tìm, để đổi lấy vài pixel.
+     ⇒ Chỉ giường CÓ NGƯỜI mới bị bộ lọc ẩn, và phần bị ẩn vẫn PHẢI nói ra (luật 14 · log lỗi L11 —
+     user báo 2 lần: Phòng E108 · N503): số ẩn = số cả phòng − số thẻ đang vẽ, tính từ chính thứ
+     đang vẽ nên không thể lệch với thứ mắt đang thấy. */
+  function anLoc(an) {
+    return an > 0
+      ? ` · <span class="rmeta-an" title="Những giường có người này không thuộc bộ lọc đang bật nên không được vẽ. Bấm “Bỏ lọc” để xem đủ cả phòng.">đang ẩn ${an} giường có người</span>`
       : "";
   }
 
   function khoaHtml(k, idx) {
+    // PRESET "khoa thiếu chỗ" lọc ở CẤP KHOA: khoa nào cầu không vượt cung thì bỏ hẳn khỏi kết quả.
+    if (preset === "khoa_thieu" && thieuCho(k) === 0) return "";
     let html = "", lastFloor = "___";
     // `hien` = giường KHỚP bộ lọc (thứ được vẽ) · `giuong` giữ NGUYÊN cả phòng (thứ để ĐẾM).
     // Trước 2026-07-23 chỗ này ghi đè luôn `giuong` → đang tìm kiếm thì "tối đa N giường" và
@@ -388,7 +435,10 @@
     if (rooms.length) { dem.k++; dem.g += rooms.reduce((s, r) => s + r.hien.length, 0); }
 
     if (!rooms.length) {
-      if (dangLoc()) return "";               // đang lọc → khoa không khớp thì ẩn hẳn, khỏi nhiễu
+      /* ⚠️ NGOẠI LỆ cho preset "khoa thiếu chỗ": khoa 0 giường mà vẫn có người chờ vào (đo: Khoa Tạo
+         Hình Thẩm Mỹ — 0 giường · 2 người chờ) là ca thiếu chỗ NẶNG NHẤT, ẩn nó đi là ẩn đúng thứ
+         người dùng vừa bấm để tìm. Các bộ lọc khác thì vẫn ẩn khoa không khớp cho khỏi nhiễu. */
+      if (dangLoc() && preset !== "khoa_thieu") return "";
       html = `<div class="g-empty-msg">Khoa này chưa khai giường trên HIS.</div>`;
     } else {
       let open = false;
@@ -412,12 +462,24 @@
            khi phòng vẫn còn chỗ. Đi kèm nền: 0 người → nền xanh nhạt · 0 trống → nền đỏ nhạt (giữ
            nguyên luật cũ). Ba mức không đá nhau: NỀN nói mức đầy, VIỀN nói "còn chỗ hay không". */
         const conCho = conTrong > 0 ? " concho" : "";
-        html += `<div class="g-room${wide}${conCho} ${coNguoi === 0 ? "empty" : (day ? "full" : "")}">
+        /* ⚠️ MỨC THỨ BA của tên phòng — "kín NHƯNG sắp có chỗ" (sửa 2026-08-10 sau phản biện).
+           Bản trước chỉ có xanh (còn trống) / đỏ (kín) ⇒ **144/519 phòng** có 0 giường trống mà bên
+           trong có người đã hẹn giờ ra viện bị tô ĐỎ = "đừng tới đây", trong khi nút `⚡ Chỗ sắp có`
+           lại đang đếm chính những giường đó (253 ca). Hai lớp giao diện nói ngược nhau — đúng cái
+           thẻ B609 user gửi ảnh: tên phòng đỏ mà bên trong ghi "sắp ra viện → ra 16:00".
+           Nay: xanh = có chỗ NGAY · amber = 0 trống nhưng sắp có · đỏ = kín và KHÔNG ai sắp ra
+           (209 phòng) ⇒ đỏ mới thật là "muốn xếp người thì phải chuyển khoa". */
+        const nSapRa = r.giuong.filter(g => (g.nguoi || []).some(p => p.sap_ra)).length;
+        const sapCho = day && nSapRa > 0 ? " sapcho" : "";
+        html += `<div class="g-room${wide}${conCho}${sapCho} ${coNguoi === 0 ? "empty" : (day ? "full" : "")}">
           <h3><span>${esc(r.ten)}</span>
-            <span class="g-cap${day ? " done" : ""}">tối đa ${r.giuong.length} giường</span></h3>
+            <span class="g-cap${day ? (sapCho ? " soon" : " done") : ""}">tối đa ${r.giuong.length} giường</span></h3>
           <div class="rmeta">${dangLoc()
             ? `<b>${r.hien.length}</b>/${r.giuong.length} giường khớp bộ lọc${anLoc(busy.length, free.length, coNguoi, conTrong)}`
-            : `<b>${coNguoi}</b> giường có người · <b>${conTrong}</b> trống${day ? " · <b>đã kín</b>" : ""}`}</div>
+            // Nói bằng CHỮ, không chỉ bằng màu (WCAG 1.4.1): "đã kín · sắp có N chỗ" — người không
+            // phân biệt được xanh/amber/đỏ vẫn đọc ra được phòng nào sắp nhận được người.
+            : `<b>${coNguoi}</b> giường có người · <b>${conTrong}</b> trống${
+                day ? (nSapRa ? ` · <b>đã kín</b> · <b class="soon">sắp có ${nSapRa} chỗ</b>` : " · <b>đã kín</b>") : ""}`}</div>
           ${busy.length ? `<div class="g-beds">${busy.map(bedHtml).join("")}</div>` : ""}
           ${free.length ? `<div class="g-frees"><span class="lb">Trống:</span>
             ${free.map(g => { const pk = phongKhac(g, r, dungMa);
@@ -529,6 +591,15 @@
   function capNhatNutLoc() {
     const d = D ? demNhom() : null;
     const put = (el, v) => { if (el && v != null) el.textContent = n(v); };
+    // Nút "Khoa thiếu chỗ" đếm theo KHOA (không phải giường) — tooltip trên nút nói rõ đơn vị.
+    const pt = $("#g-presetThieu");
+    if (pt) {
+      pt.setAttribute("aria-pressed", preset === "khoa_thieu" ? "true" : "false");
+      if (D) put(pt.querySelector(".c"), dsKhoaThieu().length);
+      // Không khoa nào thiếu chỗ → nút vô nghĩa, ẩn đi thay vì để người dùng bấm ra danh sách rỗng
+      // (Baymard: đừng để người dùng rơi vào tổ hợp 0 kết quả).
+      if (D) pt.classList.toggle("an", dsKhoaThieu().length === 0);
+    }
     /* Roving tabindex: nhóm chọn-một chỉ được MỘT điểm dừng Tab, di chuyển bên trong bằng mũi tên
        (đúng khuôn radiogroup của WAI-ARIA). Khai `role="radio"` mà để cả 3 nút nhận Tab là khai một
        đằng làm một nẻo. Lúc preset bật thì không nút nào được chọn → cho nút đầu nhận Tab, kẻo cả

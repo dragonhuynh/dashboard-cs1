@@ -170,6 +170,13 @@
                     title="Giường trống HOẶC giường có người đã hẹn giờ ra viện — chỗ có thể nhận người bệnh hôm nay">
               <svg class="gi gi-fill" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.4 1.6 3.6 9.2h3.2l-.7 5.2 5.9-7.6H8.7z"/></svg>Chỗ sắp có <span class="c" data-c="preset"></span>
             </button>
+            <!-- PRESET phía CẦU (thêm 2026-08-10): hai trục nút chỉ nói về CUNG (giường), không có gì
+                 trả lời "khoa nào cầu vượt cung" — mà muốn biết thì phải đọc 14 thẻ khoa rồi trừ nhẩm.
+                 Lọc ở cấp KHOA nên cũng không nhét được vào trục nào ⇒ nút riêng. Số = số KHOA. -->
+            <button class="g-preset g-preset-cau" type="button" id="g-presetThieu" aria-pressed="false"
+                    title="Khoa có số người chờ tiếp nhận vào khoa NHIỀU HƠN số giường trống — cầu vượt cung. Đếm theo KHOA, không phải giường.">
+              <svg class="gi" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2v7.2"/><path d="M5.2 6.6 8 9.6l2.8-3"/><path d="M2.6 13.4h10.8"/></svg>Khoa thiếu chỗ <span class="c" data-c="khoa_thieu"></span>
+            </button>
             <span class="g-fl" id="g-fl1">Tình trạng</span>
             <div class="g-seg" role="radiogroup" aria-labelledby="g-fl1">
               <button class="g-sg" type="button" role="radio" data-tt="" aria-checked="true">Tất cả <span class="c" data-c="all"></span></button>
@@ -194,7 +201,7 @@
               <button class="g-lg" type="button" data-sg="ghep" aria-pressed="false"
                       title="Từ 2 người bệnh trở lên nằm cùng một giường, không tính ca trùng giường hay giữ chỗ (mẹ và con tính là MỘT) — đếm theo GIƯỜNG"><i></i>Nằm ghép <span class="c"></span></button>
               <button class="g-lg" type="button" data-sg="trung" aria-pressed="false"
-                      title="Trên giường có người bệnh mà HIS đồng thời gán ở giường khác — cần soát lại, một trong hai giường có thể đã trống (đếm theo GIƯỜNG)"><svg class="gi" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.3" y="2.3" width="8" height="8" rx="1.5"/><rect x="5.7" y="5.7" width="8" height="8" rx="1.5"/></svg>Trùng giường <span class="c"></span></button>
+                      title="Người bệnh đang được HIS gán ở HAI PHÒNG KHÁC NHAU — đi tìm sẽ tới sai phòng, một trong hai giường có thể đã trống. Trùng giường trong CÙNG một phòng (đổi giường) không tính vào đây vì vô hại; thẻ giường vẫn ghi chú đủ cả hai kiểu. Đếm theo GIƯỜNG."><svg class="gi" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.3" y="2.3" width="8" height="8" rx="1.5"/><rect x="5.7" y="5.7" width="8" height="8" rx="1.5"/></svg>Trùng khác phòng <span class="c"></span></button>
             </div>
           </div>
         </div>
