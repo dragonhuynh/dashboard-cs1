@@ -168,7 +168,7 @@
                  "Filter Favorites". Đúng câu hỏi số 1 của người xếp giường. -->
             <button class="g-preset" type="button" id="g-preset" aria-pressed="false"
                     title="Giường trống HOẶC giường có người đã hẹn giờ ra viện — chỗ có thể nhận người bệnh hôm nay">
-              ⚡ Chỗ sắp có <span class="c" data-c="preset"></span>
+              <svg class="gi gi-fill" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.4 1.6 3.6 9.2h3.2l-.7 5.2 5.9-7.6H8.7z"/></svg>Chỗ sắp có <span class="c" data-c="preset"></span>
             </button>
             <span class="g-fl" id="g-fl1">Tình trạng</span>
             <div class="g-seg" role="radiogroup" aria-labelledby="g-fl1">
@@ -183,15 +183,18 @@
               <button class="g-lg" type="button" data-sg="sap_ra" aria-pressed="false"
                       title="Giường có người bệnh đã hẹn giờ ra viện (đếm theo GIƯỜNG — thẻ KPI ở trên đếm theo NGƯỜI nên số khác)"><i></i>Sắp ra viện <span class="c"></span></button>
               <!-- 3 dấu hiệu dưới đây hiện trên thẻ bằng CHIP (không phải màu viền giường) → dùng
-                   GLYPH thay ô vuông màu, để luật "ô vuông = đúng màu viền thẻ" không bị nói sai. -->
+                   BIỂU TƯỢNG thay ô vuông màu, để luật "ô vuông = đúng màu viền thẻ" không bị nói sai.
+                   SVG một màu (`currentColor`) chứ KHÔNG emoji: emoji lên màu theo hệ điều hành nên
+                   một hàng nút vừa có ô màu phẳng vừa có hình nhiều màu, và đây là màn dùng trong
+                   bệnh viện — biểu tượng phải nghiêm, không phải hình vui mắt. -->
               <button class="g-lg" type="button" data-sg="qua_hen" aria-pressed="false"
-                      title="Đã qua giờ hẹn ra viện mà người bệnh còn trên giường — chỗ đáng lẽ đã trống (đếm theo GIƯỜNG)"><span class="gl">⏰</span>Quá giờ hẹn <span class="c"></span></button>
+                      title="Đã qua giờ hẹn ra viện mà người bệnh còn trên giường — chỗ đáng lẽ đã trống (đếm theo GIƯỜNG)"><svg class="gi" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.3V8l2.7 1.7"/></svg>Quá giờ hẹn <span class="c"></span></button>
               <button class="g-lg" type="button" data-sg="giu" aria-pressed="false"
-                      title="Giường đã có người đăng ký giữ chỗ nhưng người đang ở nơi khác (phòng mổ · hồi sức · đang chuyển khoa) — đứng ở cửa phòng sẽ không thấy ai (đếm theo GIƯỜNG)"><span class="gl">⇢</span>Giữ chỗ <span class="c"></span></button>
+                      title="Giường đã có người đăng ký giữ chỗ nhưng người đang ở nơi khác (phòng mổ · hồi sức · đang chuyển khoa) — đứng ở cửa phòng sẽ không thấy ai (đếm theo GIƯỜNG)"><svg class="gi" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 2.4h7.6v11.2L8 10.9l-3.8 2.7z"/></svg>Giữ chỗ <span class="c"></span></button>
               <button class="g-lg" type="button" data-sg="ghep" aria-pressed="false"
                       title="Từ 2 người bệnh trở lên nằm cùng một giường, không tính ca trùng giường hay giữ chỗ (mẹ và con tính là MỘT) — đếm theo GIƯỜNG"><i></i>Nằm ghép <span class="c"></span></button>
               <button class="g-lg" type="button" data-sg="trung" aria-pressed="false"
-                      title="Trên giường có người bệnh mà HIS đồng thời gán ở giường khác — cần soát lại, một trong hai giường có thể đã trống (đếm theo GIƯỜNG)"><span class="gl">⧉</span>Trùng giường <span class="c"></span></button>
+                      title="Trên giường có người bệnh mà HIS đồng thời gán ở giường khác — cần soát lại, một trong hai giường có thể đã trống (đếm theo GIƯỜNG)"><svg class="gi" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.3" y="2.3" width="8" height="8" rx="1.5"/><rect x="5.7" y="5.7" width="8" height="8" rx="1.5"/></svg>Trùng giường <span class="c"></span></button>
             </div>
           </div>
         </div>

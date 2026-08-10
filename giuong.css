@@ -53,6 +53,17 @@
 #tab-giuong .g-frow { display: contents; }
 #tab-giuong .g-fl { flex: none; font-size: 11px; font-weight: 700; letter-spacing: .04em;
   text-transform: uppercase; color: var(--muted); }
+/* Vạch ngăn giữa PRESET (một câu hỏi) và hai TRỤC (thuộc tính của giường) — cấu trúc nói ra sự
+   khác loại, thay vì để người dùng tự đoán từ vị trí. */
+#tab-giuong #g-fl1 { padding-left: 9px; border-left: 1px solid var(--line); }
+/* Biểu tượng một màu, ăn theo màu chữ của nút (kể cả lúc nút bật đổi màu) */
+#tab-giuong .gi { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor;
+  stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+#tab-giuong .gi-fill { fill: currentColor; stroke: none; }
+/* Quality floor: bàn phím phải thấy được mình đang ở đâu (dùng chuột thì không hiện) */
+#tab-giuong .g-sg:focus-visible, #tab-giuong .g-lg:focus-visible,
+#tab-giuong .g-preset:focus-visible, #tab-giuong .g-lg-clear:focus-visible,
+#tab-giuong .g-sum-clear:focus-visible { outline: 2px solid var(--brand-blue-dark); outline-offset: 2px; }
 #tab-giuong .g-sg .c, #tab-giuong .g-lg .c, #tab-giuong .g-preset .c {
   font-weight: 700; font-variant-numeric: tabular-nums; opacity: .75; }
 
@@ -306,10 +317,12 @@
      để các nút của cả 2 trục nằm chung một hàng cuộn.
      ⚠️ `flex-wrap: nowrap` BẮT BUỘC ở cả .g-fbar (bẫy đã ghi ở trên: flex nhiều dòng theo chiều
      dọc lấy bề rộng = max-content của item rộng nhất → kéo nở ô tìm và TRÀN NGANG trang). */
-  #tab-giuong .g-fbar { flex-wrap: nowrap; gap: 6px;
+  /* gap 8px, KHÔNG 6px: hai vùng chạm cạnh nhau phải cách ≥8px kẻo bấm nhầm nút bên cạnh — hàng
+     này cuộn ngang nên rộng thêm vài px không mất gì. */
+  #tab-giuong .g-fbar { flex-wrap: nowrap; gap: 8px;
     overflow-x: auto; scrollbar-width: none; padding-bottom: 1px; }  /* Safari: ::-webkit-scrollbar dưới */
   #tab-giuong .g-fbar::-webkit-scrollbar { display: none; }
-  #tab-giuong .g-legend { flex-wrap: nowrap; gap: 6px; }
+  #tab-giuong .g-legend { flex-wrap: nowrap; gap: 8px; }
   #tab-giuong .g-seg { flex: none; }
   #tab-giuong .g-lg, #tab-giuong .g-lg-clear, #tab-giuong .g-sg, #tab-giuong .g-preset {
     min-height: 44px; padding: 6px 12px; font-size: 13px;

@@ -507,8 +507,15 @@
   function capNhatNutLoc() {
     const d = D ? demNhom() : null;
     const put = (el, v) => { if (el && v != null) el.textContent = n(v); };
-    $$(".g-sg").forEach(b => {
+    /* Roving tabindex: nhóm chọn-một chỉ được MỘT điểm dừng Tab, di chuyển bên trong bằng mũi tên
+       (đúng khuôn radiogroup của WAI-ARIA). Khai `role="radio"` mà để cả 3 nút nhận Tab là khai một
+       đằng làm một nẻo. Lúc preset bật thì không nút nào được chọn → cho nút đầu nhận Tab, kẻo cả
+       nhóm biến mất khỏi luồng bàn phím. */
+    const sgs = $$(".g-sg");
+    const iChon = Math.max(0, sgs.findIndex(b => !preset && ttTruc === b.dataset.tt));
+    sgs.forEach((b, i) => {
       b.setAttribute("aria-checked", (!preset && ttTruc === b.dataset.tt) ? "true" : "false");
+      b.tabIndex = i === iChon ? 0 : -1;
       if (d) put(b.querySelector(".c"), d[b.dataset.tt || "all"]);
     });
     $$(".g-lg").forEach(b => {
@@ -551,6 +558,17 @@
       preset = false; ttTruc = b.dataset.tt;
       moKhoa(false);          // ĐT: bảng khoa đang bung thì che mất kết quả vừa lọc
       capNhatNutLoc(); veLaiKetQua();
+    });
+    // Mũi tên ←→ (và ↑↓ · Home · End) đổi lựa chọn trong trục 1 — hợp đồng bàn phím của radiogroup.
+    const seg = $(".g-seg");
+    if (seg) seg.addEventListener("keydown", e => {
+      const ds = $$(".g-sg"), i = ds.indexOf(document.activeElement);
+      if (i < 0) return;
+      const j = e.key === "ArrowRight" || e.key === "ArrowDown" ? (i + 1) % ds.length
+        : e.key === "ArrowLeft" || e.key === "ArrowUp" ? (i - 1 + ds.length) % ds.length
+        : e.key === "Home" ? 0 : e.key === "End" ? ds.length - 1 : -1;
+      if (j < 0) return;
+      e.preventDefault(); ds[j].click(); ds[j].focus();
     });
     // TRỤC 2 — chọn NHIỀU (HOẶC trong trục, VÀ với trục 1). Bấm lại = tắt.
     $$(".g-lg").forEach(b => b.onclick = () => {
