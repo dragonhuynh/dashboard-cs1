@@ -200,6 +200,36 @@
     return `<div class="g-bed ${cls}"><div class="top"><span class="no">${esc(g.so_hieu)}</span>${tag}</div>${who}</div>`;
   }
 
+  /* ===== GIƯỜNG MANG SỐ HIỆU CỦA PHÒNG KHÁC =====
+     HIS khai một số giường có số hiệu thuộc phòng khác: `B517.02` nằm trong **Phòng B518**,
+     `B303B.xx` trong B303… Đã HỎI LẠI HIS ngày 10/08 để chắc chắn không phải lỗi của mình: sơ đồ
+     phòng giường của HIS cũng xếp `B517.02` vào phòng B518 và tự tính `slGiuong=5 · slGiuongTrong=1`
+     — đúng y con số dashboard đang vẽ.
+     ⇒ KHÔNG được tự dời giường về phòng trùng tên cho "gọn" (luật 13: khớp HIS, đừng sửa số).
+     Nhưng PHẢI NÓI RA: điều dưỡng đứng ở cửa B518 thấy chip xanh "Trống: B517.02" trong khi cả 4
+     giường B518.xx đều kín thì tưởng dashboard sai — đúng lớp lỗi "số nói dối im lặng" (luật 5).
+     Đo 10/08: 14 giường ở 5 phòng (B303 · B307 · B412 · B518 · P1129).
+     ⚠️ Chỉ gắn dấu khi tiền tố ĐÚNG LÀ mã một phòng khác CỦA CÙNG KHOA. Bỏ điều kiện đó thì
+     `HS01` trong phòng `HKV1`, `GHE.003`, `GIUONG.05`… bị gắn oan (HIS đặt tên giường tự do). */
+  const maGoc = g => String(g.so_hieu || "").split(".")[0];
+  function phongKhac(g, r, maCuaKhoa) {
+    const p = maGoc(g);
+    return p && r.ma && p !== r.ma && maCuaKhoa.has(p) ? p : "";
+  }
+
+  /* Dòng giải thích đặt NGAY trong thẻ phòng — chỉ hiện ở 5 phòng toàn viện nên không thành nhiễu.
+     Nói ĐÚNG điều HIS ghi, KHÔNG phán "HIS khai sai": mình không có cách nào biết giường đó thật ra
+     nằm ở phòng nào (R09 — chưa biết thì đừng đoán). Chỉ xét giường ĐANG VẼ, để dòng chữ luôn khớp
+     với thứ mắt đang thấy khi đang lọc. */
+  function maNote(beds, r, maCuaKhoa) {
+    const ds = beds.map(g => [g.so_hieu, phongKhac(g, r, maCuaKhoa)]).filter(x => x[1]);
+    if (!ds.length) return "";
+    const ma = [...new Set(ds.map(x => x[1]))];
+    return `<div class="g-manote">HIS khai ${ds.length > 1 ? "các giường" : "giường"} `
+      + `<b>${ds.map(x => esc(x[0])).join(" · ")}</b> thuộc phòng này, `
+      + `dù số hiệu mang mã phòng ${ma.map(esc).join(" · ")}.</div>`;
+  }
+
   // Lọc trạng thái và từ khóa CỘNG DỒN (VÀ): gõ "h6" rồi bấm "Giường trống" = giường trống của H6.
   function match(g, room) {
     if (ttLoc.size && !loaiLoc(g).some(t => ttLoc.has(t))) return false;
@@ -242,6 +272,7 @@
     const rooms = k.phong
       .map(r => ({ ...r, hien: r.giuong.filter(g => match(g, r)) }))
       .filter(r => r.hien.length);
+    const maCuaKhoa = new Set(k.phong.map(p => p.ma).filter(Boolean));
 
     dem.p += rooms.length;
     if (rooms.length) { dem.k++; dem.g += rooms.reduce((s, r) => s + r.hien.length, 0); }
@@ -273,7 +304,11 @@
             : `<b>${coNguoi}</b> giường có người · <b>${conTrong}</b> trống${day ? " · <b>đã kín</b>" : ""}`}</div>
           ${busy.length ? `<div class="g-beds">${busy.map(bedHtml).join("")}</div>` : ""}
           ${free.length ? `<div class="g-frees"><span class="lb">Trống:</span>
-            ${free.map(g => `<span class="g-chip">${esc(g.so_hieu)}</span>`).join("")}</div>` : ""}
+            ${free.map(g => { const pk = phongKhac(g, r, maCuaKhoa);
+              return `<span class="g-chip${pk ? " manote" : ""}"${pk
+                ? ` title="HIS khai giường này thuộc ${esc(r.ten)}, dù số hiệu mang mã phòng ${esc(pk)}"` : ""
+                }>${esc(g.so_hieu)}</span>`; }).join("")}</div>` : ""}
+          ${maNote(r.hien, r, maCuaKhoa)}
           </div>`;
       }
       if (open) html += "</div>";

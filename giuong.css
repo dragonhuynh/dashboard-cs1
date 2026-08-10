@@ -159,6 +159,13 @@
 #tab-giuong .g-chip { font-size: 12.5px; font-weight: 600; color: #15803d; background: var(--green-bg);
   border: 1px solid #bbf7d0; border-radius: 6px; padding: 3px 8px; }
 
+/* Giường mang SỐ HIỆU CỦA PHÒNG KHÁC (HIS khai vậy — xem `phongKhac()` trong giuong.js).
+   Viền đứt = "có điều cần đọc thêm", KHÔNG dùng màu cảnh báo: đây không phải lỗi, chỉ là cách
+   HIS khai. Tô đỏ/cam ở 14 giường vô hại là dựng lại đúng bệnh alarm fatigue của tab CĐHA (§12.1). */
+#tab-giuong .g-chip.manote { border-style: dashed; border-color: #86c99b; }
+#tab-giuong .g-manote { margin-top: 7px; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+#tab-giuong .g-manote b { color: var(--ink); font-weight: 600; }
+
 #tab-giuong .g-bed { border: 1px solid var(--line); border-left-width: 4px; border-radius: 7px;
   padding: 6px 9px; background: #fff; }
 #tab-giuong .g-bed.busy  { border-left-color: var(--brand-blue); }
