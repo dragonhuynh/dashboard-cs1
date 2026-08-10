@@ -171,8 +171,12 @@
       // Chỉ ghi trạng thái KHI KHÁC "Đang điều trị": in nhãn đó lên 1.700 dòng bình thường là nhiễu,
       // còn "đang chuyển khoa"/"chờ ra viện" mới là thứ làm giường sắp đổi chủ.
       const tt = p.tt_ma && p.tt_ma !== 30 ? ` <span class="g-tt g-tt${p.tt_ma}">${esc(ttNhan(p.tt_ma))}</span>` : "";
+      // GIỮ CHỖ: người đã đăng ký giường này nhưng đang ở nơi khác (mổ · hồi sức · chuyển khoa).
+      // Giường KHÔNG còn trống, nhưng đứng ở cửa phòng sẽ không thấy ai → phải nói ra, kẻo điều
+      // dưỡng tưởng dữ liệu sai rồi xếp thêm người vào. Xem CLAUDE.md §13.2 · log lỗi L10.
+      const giu = p.giu ? ` <span class="g-giu" title="Giường đã có người đăng ký giữ chỗ">${esc(p.giu)}</span>` : "";
       return `<div class="who" title="${esc(tip)}">
-        <span class="${con ? "kid" : "nm"}">${con ? "↳ " : ""}${esc(p.ten)}</span>${tt}
+        <span class="${con ? "kid" : "nm"}">${con ? "↳ " : ""}${esc(p.ten)}</span>${tt}${giu}
         <span class="det">${p.tuoi ? " · " + esc(p.tuoi) : ""}${p.ngay ? " · " + p.ngay + " ngày" : ""}${ra}</span>
         ${p.ba ? `<div class="ba" title="Số vào viện (mã bệnh án)">${esc(p.ba)}</div>` : ""}
         </div>`;

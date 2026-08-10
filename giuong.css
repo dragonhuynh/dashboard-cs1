@@ -181,6 +181,10 @@
 #tab-giuong .g-tt20 { color: var(--brand-blue-dark); background: var(--brand-blue-50); border-color: #bcd9ee; }
 #tab-giuong .g-tt40 { color: var(--brand-pink); background: var(--brand-pink-50); border-color: #f7c6dd; }
 #tab-giuong .g-tt50 { color: var(--amber); background: var(--amber-bg); border-color: #f5dda6; }
+/* Giữ chỗ: đã đăng ký giường nhưng người đang ở nơi khác (mổ · hồi sức · chuyển khoa).
+   Viền ĐỨT để phân biệt với nhãn trạng thái ở trên — "có đăng ký, chưa nằm tại chỗ". */
+#tab-giuong .g-giu { font-size: 11px; font-weight: 600; border-radius: 20px; padding: 1px 7px;
+  white-space: nowrap; border: 1px dashed #c9ccd1; color: var(--muted); margin-left: 2px; }
 #tab-giuong .g-empty-msg { color: var(--muted); padding: 20px; text-align: center; background: #fff;
   border-radius: 10px; }
 #tab-giuong .g-foot { color: var(--muted); font-size: 12.5px; padding: 6px 0 0; }
