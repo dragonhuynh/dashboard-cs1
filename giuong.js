@@ -30,11 +30,25 @@
      "Sắp ra viện" lại ra thẻ đỏ — dashboard nói một đằng bày một nẻo. */
   const TEN_LOAI = { trong: "Giường trống", nguoi: "Đang có người", sap_ra: "Sắp ra viện", nhieu: "Nhiều người bệnh" };
   const LOAI_CLS = { nguoi: "busy", sap_ra: "out", nhieu: "multi" };
+  // MÀU thẻ: một giường chỉ được MỘT màu → xét theo thứ tự ưu tiên (nặng nhất thắng).
   function loaiGiuong(g) {
     const ppl = g.nguoi || [];
     if (!ppl.length) return "trong";
     if (g.ho > 1) return "nhieu";
     return ppl.some(p => p.sap_ra) ? "sap_ra" : "nguoi";
+  }
+  /* LỌC thì KHÔNG dùng ưu tiên — một giường thuộc được NHIỀU loại cùng lúc (user chốt 2026-08-10):
+     giường 2 mẹ con vẫn LÀ giường "đang có người", bấm lọc đó mà không thấy nó là nói thiếu
+     (B716.02 · B716.05 từng biến mất, phòng ghi "3 giường khớp" mà chỉ vẽ 2 người).
+     Giường có người sắp ra viện cũng vậy. Màu thẻ vẫn theo loaiGiuong → lọc "Sắp ra viện" có thể
+     ra thẻ ĐỎ (giường 2 người, 1 người sắp ra) — đúng bản chất, nhãn trên thẻ đã ghi rõ cả hai. */
+  function loaiLoc(g) {
+    const ppl = g.nguoi || [];
+    if (!ppl.length) return ["trong"];
+    const ds = ["nguoi"];
+    if (g.ho > 1) ds.push("nhieu");
+    if (ppl.some(p => p.sap_ra)) ds.push("sap_ra");
+    return ds;
   }
   const dangLoc = () => !!q || ttLoc.size > 0;
 
@@ -188,7 +202,7 @@
 
   // Lọc trạng thái và từ khóa CỘNG DỒN (VÀ): gõ "h6" rồi bấm "Giường trống" = giường trống của H6.
   function match(g, room) {
-    if (ttLoc.size && !ttLoc.has(loaiGiuong(g))) return false;
+    if (ttLoc.size && !loaiLoc(g).some(t => ttLoc.has(t))) return false;
     if (!q) return true;
     // Tìm được cả bằng SỐ VÀO VIỆN: cầm giấy tờ trên tay gõ số là ra ngay giường (user chốt).
     const hay = (g.so_hieu + " " + room.ten + " " + (room.ma || "") + " " +
