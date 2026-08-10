@@ -350,8 +350,12 @@
         .map(t => TEN_SIG[t]).join(" hoặc "));
     }
     if (q) phan.push(`từ khóa “${esc(q)}”`);
+    /* Nút thoát ĐẶT NGAY ĐÂY, không chỉ ở thanh dính: trên ĐT hàng lọc cuộn ngang, và trình duyệt
+       tự kéo chip vừa bấm vào giữa ⇒ nút "Bỏ lọc" ở đầu hàng trôi ra khỏi tầm mắt (đo thật ở
+       390px). Dòng này luôn nằm ngay đầu phần kết quả nên là chỗ chắc chắn với tới được. */
     return `<div class="g-flt-sum">Đang lọc: <b>${phan.join(" · ")}</b>
-      <span class="num">${n(dem.g)} giường · ${n(dem.p)} phòng · ${n(dem.k)} khoa</span></div>`;
+      <span class="num">${n(dem.g)} giường · ${n(dem.p)} phòng · ${n(dem.k)} khoa</span>
+      <button type="button" class="g-sum-clear" data-clear="1">✕ Bỏ lọc</button></div>`;
   }
 
   function khoaHtml(k, idx) {
@@ -566,11 +570,17 @@
       if (preset) { ttTruc = ""; sigLoc.clear(); }
       moKhoa(false); capNhatNutLoc(); veLaiKetQua();
     };
-    $("#g-lgClear").onclick = () => {
+    const boLoc = () => {
       preset = false; ttTruc = ""; sigLoc.clear();
       const inp = $("#g-q"); if (inp) { inp.value = ""; q = ""; }   // "Bỏ lọc" phải bỏ CẢ từ khóa
       capNhatNutLoc(); veLaiKetQua();
     };
+    $("#g-lgClear").onclick = boLoc;
+    // Nút "Bỏ lọc" trong dòng tóm tắt được vẽ lại mỗi lần lọc → bắt bằng ủy quyền sự kiện,
+    // đừng gắn onclick vào phần tử vừa sinh (lần vẽ sau là phần tử khác, handler mất).
+    $("#g-body").addEventListener("click", e => {
+      if (e.target.closest("[data-clear]")) boLoc();
+    });
     // gõ tìm thì gập bảng khoa lại — kết quả tìm nằm ngay dưới, đừng để bảng che
     $("#g-q").addEventListener("focus", () => moKhoa(false));
     $("#g-pick").onclick = () => moKhoa();

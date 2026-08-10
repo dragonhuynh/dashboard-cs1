@@ -115,6 +115,9 @@
   background: var(--brand-blue-50); border: 1px solid #bcd9ee; border-radius: 8px;
   padding: 7px 11px; margin-bottom: 12px; font-size: 13px; color: var(--brand-blue-dark); }
 #tab-giuong .g-flt-sum .num { color: var(--muted); font-size: 12.5px; }
+#tab-giuong .g-sum-clear { margin-left: auto; font: inherit; font-size: 12.5px; color: var(--muted);
+  background: #fff; border: 1px dashed #bcd9ee; border-radius: 20px; padding: 3px 10px; cursor: pointer; }
+#tab-giuong .g-sum-clear:hover { color: var(--red); border-color: #eda3a3; }
 #tab-giuong .g-empty-msg .g-sub { display: block; margin-top: 4px; font-size: 12.5px; }
 
 /* ===== BẢNG KHOA — hiện HẾT cùng lúc (không cuộn ngang), bấm để nhảy xuống chi tiết ===== */
@@ -314,6 +317,7 @@
   /* Nút Bỏ lọc lên ĐẦU hàng: nó chỉ hiện khi đang lọc, mà nằm cuối thì phải cuộn ngang qua
      cả hai trục mới với tới — thao tác thoát khỏi bộ lọc phải luôn ở trong tầm ngón cái. */
   #tab-giuong .g-lg-clear { order: -1; }
+  #tab-giuong .g-sum-clear { min-height: 44px; padding: 8px 14px; }   /* ≥44px vùng chạm */
 
   /* Nút chọn khoa: 1 tay bấm được, nhãn tự nói đang ở đâu — khỏi cuộn ngược lên dò */
   #tab-giuong .g-pick { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px;
