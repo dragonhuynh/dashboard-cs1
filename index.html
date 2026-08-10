@@ -177,6 +177,18 @@
                     title="Khoa có số người chờ tiếp nhận vào khoa NHIỀU HƠN số giường trống — cầu vượt cung. Đếm theo KHOA, không phải giường.">
               <svg class="gi" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2v7.2"/><path d="M5.2 6.6 8 9.6l2.8-3"/><path d="M2.6 13.4h10.8"/></svg>Khoa thiếu chỗ <span class="c" data-c="khoa_thieu"></span>
             </button>
+            <!-- PRESET "có thể đã trống" (thêm 2026-08-10): giường HIS ghi có người, nhưng MỌI người
+                 trên đó đều đang được gán ở PHÒNG KHÁC ⇒ ít nhất một bản ghi đã cũ, giường rất có thể
+                 đang trống thật. Đo: 134 giường / 63 phòng — đi kiếm chỗ mà lọc "Trống" thì không ra.
+                 ⚠️ PHẢI là preset, KHÔNG được làm chip trục 2: nó là TẬP CON của chip "Trùng khác
+                 phòng" (134 ⊂ 211) → cùng một trục HOẶC thì bấm cả hai không nhích số, đúng lỗi "nút
+                 cha hấp thụ nút con" đã trị hồi sáng.
+                 ⚠️ Và KHÔNG được gộp với "Chưa thấy người": hai nhóm sai NGƯỢC HƯỚNG nhau — nhóm kia
+                 là giường ĐÃ CÓ CHỦ (xếp người vào là trùng), nhóm này là giường CÓ THỂ DÙNG ĐƯỢC. -->
+            <button class="g-preset g-preset-soat" type="button" id="g-presetSoat" aria-pressed="false"
+                    title="Giường HIS ghi có người, nhưng MỌI người trên giường đó đều đang được HIS gán ở một phòng khác nữa — nghĩa là ít nhất một bản ghi đã cũ và giường này có thể đã trống. Phải ra soát tận nơi rồi mới xếp người (đếm theo GIƯỜNG).">
+              <svg class="gi" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="M10.4 10.4 14 14"/></svg>Có thể đã trống <span class="c" data-c="co_the_trong"></span>
+            </button>
             <span class="g-fl" id="g-fl1">Tình trạng</span>
             <div class="g-seg" role="radiogroup" aria-labelledby="g-fl1">
               <button class="g-sg" type="button" role="radio" data-tt="" aria-checked="true">Tất cả <span class="c" data-c="all"></span></button>
