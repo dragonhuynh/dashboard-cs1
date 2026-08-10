@@ -127,7 +127,13 @@
   gap: 12px; margin-bottom: 22px; grid-auto-flow: dense; align-items: start; }
 #tab-giuong .g-room { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
 #tab-giuong .g-room.wide  { grid-column: 1 / -1; }     /* phòng nhiều giường trải NGANG, không kéo dài 1 cột */
-#tab-giuong .g-room.full  { border-color: #f3c7c7; }
+/* Phòng ĐÃ KÍN (0 giường trống) → tô NGUYÊN Ô đỏ nhạt (user chốt 2026-08-10) — cặp đối xứng với
+   ô xanh của phòng trống ngay dưới: liếc một cái là biết phòng nào còn nhận được người, phòng nào
+   khỏi ghé. Thẻ người bệnh bên trong giữ NỀN TRẮNG để chữ vẫn tương phản tối đa.
+   ⚠️ `.g-bed.multi` vốn dùng đúng `--red-bg` → trên nền ô mới nó TRÙNG MÀU, biến mất; phải đậm hơn. */
+#tab-giuong .g-room.full  { background: var(--red-bg); border-color: #f3c7c7; }
+#tab-giuong .g-room.full .g-bed { border-color: #f3c7c7; }
+#tab-giuong .g-room.full .g-bed.multi { background: #fee2e2; border-color: #f3c7c7; }
 /* Phòng KHÔNG có ai nằm → tô NGUYÊN Ô xanh lá nhạt (user chốt 2026-08-10): người xếp giường quét
    mắt tìm chỗ trống, ô màu bắt mắt nhanh hơn là đọc chữ "0 có người" ở dòng nhỏ.
    ⚠️ Chip trống bên trong phải ĐẬM HƠN nền ô, nếu không nó cùng màu nền → biến mất. */
