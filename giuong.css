@@ -82,6 +82,10 @@
 #tab-giuong .g-sg[data-tt="nguoi"] i { background: #fff; border-left: 4px solid var(--brand-blue); }
 #tab-giuong .g-sg[aria-checked="true"] { font-weight: 700; color: var(--brand-blue-dark);
   background: var(--brand-blue-50); box-shadow: inset 0 0 0 1px #7fb6dc; }
+/* "Tất cả" là trạng thái KHÔNG LỌC → tô xanh dương như hai mục kia thì đọc ra "đang có bộ lọc chạy".
+   Vẫn phải thấy được là mục đang chọn (segmented control), nên dùng xám trung tính. */
+#tab-giuong .g-sg[data-tt=""][aria-checked="true"] { color: var(--ink); background: #eef2f6;
+  box-shadow: inset 0 0 0 1px #cbd5e1; }
 #tab-giuong .g-sg[data-tt="trong"][aria-checked="true"] { color: #15803d; background: var(--green-bg);
   box-shadow: inset 0 0 0 1px #86c99b; }
 
@@ -114,6 +118,14 @@
 #tab-giuong .g-preset[aria-pressed="true"] { color: #fff; background: var(--brand-blue);
   border-color: var(--brand-blue-dark); }
 #tab-giuong .g-preset[aria-pressed="true"] .c { opacity: .95; }
+/* Preset phía CẦU: khác sắc với preset phía CUNG để hai câu hỏi không lẫn vào nhau (một cái đi tìm
+   CHỖ, một cái đi tìm KHOA đang thiếu chỗ). Dùng hồng thương hiệu — cùng màu với "chờ vào" trên thẻ
+   khoa, tức cùng một khái niệm CẦU ở mọi nơi trong tab. */
+#tab-giuong .g-preset-cau { color: var(--brand-pink); border-color: #f7c6dd; }
+#tab-giuong .g-preset-cau:hover { background: var(--brand-pink-50); }
+#tab-giuong .g-preset-cau[aria-pressed="true"] { color: #fff; background: var(--brand-pink);
+  border-color: var(--brand-pink); }
+#tab-giuong .g-preset.an { display: none; }   /* 0 khoa thiếu chỗ → ẩn, khỏi bấm ra danh sách rỗng */
 
 #tab-giuong .g-lg-clear { font: inherit; font-size: 12.5px; color: var(--muted); background: none;
   border: 1px dashed var(--line); border-radius: 20px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
@@ -152,6 +164,14 @@
 #tab-giuong .g-kh .fr { color: var(--green); font-weight: 700; }
 #tab-giuong .g-kh .fr .fn { font-size: 18px; font-weight: 800; line-height: 1; vertical-align: -1px; }
 #tab-giuong .g-kh .wt { color: var(--brand-pink); font-weight: 700; }
+/* KHOA THIẾU CHỖ (thêm 2026-08-10): cầu (chờ tiếp nhận vào khoa) > cung (giường trống). Đây là con
+   số điều phối viên phải tự trừ nhẩm qua 14 thẻ ⇒ tính sẵn và đánh dấu. Viền + nhãn chữ, KHÔNG chỉ
+   màu (WCAG 1.4.1). Chỉ 3/14 khoa nên vẫn là tín hiệu, không phải trang trí. */
+#tab-giuong .g-kh.thieu { border-color: #eda3a3; box-shadow: inset 0 0 0 1px #eda3a3; }
+#tab-giuong .g-kh .tt-thieu { color: #b91c1c; font-weight: 800; cursor: help; }
+/* Khoa HIS chưa khai giường: "trống 0" đọc ra là ĐÃ KÍN nên phải nói thẳng, và không vẽ thanh
+   công suất (không có mẫu số thì mọi thanh đều là 0% — nói dối im lặng). */
+#tab-giuong .g-kh .chuakhai { color: var(--muted); font-style: italic; }
 
 /* ===== Thanh điều phối DÍNH (bảng khoa + ô tìm) =====
    ⚠️ `top` KHÔNG phải 0 như hồi còn là trang riêng: trong dashboard tổng, khối
@@ -219,8 +239,22 @@
    Dùng #15803d (5,02 trên trắng · 4,79 trên nền xanh nhạt của phòng rỗng) và #b91c1c (5,91 trên
    nền đỏ nhạt của phòng kín — `--red` #dc2626 chỉ 4,41 trên nền đó, hụt ngưỡng).
    Huy hiệu "đã kín" và viền vẫn giữ: người không phân biệt được màu vẫn đọc ra bằng chữ. */
+/* BA MỨC (sửa 2026-08-10 sau phản biện — bản trước chỉ có xanh/đỏ):
+     xanh  = còn giường trống NGAY  (166 phòng)
+     amber = 0 trống nhưng có người đã hẹn giờ ra → SẮP có chỗ  (144 phòng)
+     đỏ    = kín và KHÔNG ai sắp ra → muốn xếp người phải chuyển khoa  (209 phòng)
+   Vì sao phải có mức giữa: 144/519 phòng trước đây bị tô ĐỎ ("đừng tới") trong khi nút
+   `⚡ Chỗ sắp có` đang đếm đúng những giường đó ⇒ hai lớp giao diện nói ngược nhau (ca B609:
+   tên phòng đỏ, bên trong ghi "sắp ra viện → ra 16:00"). Gộp lại thì 41% phòng đỏ là đỏ oan.
+   ⚠️ `--amber` #d97706 chỉ **3,19:1** trên nền trắng (chữ 15px cần ≥4,5) → dùng #b45309
+   (5,02 trên trắng · 4,59 trên nền đỏ nhạt của phòng kín). Cùng cách chọn như xanh/đỏ dưới đây. */
 #tab-giuong .g-room.concho > h3 > span:first-child { color: #15803d; }
-#tab-giuong .g-room.full > h3 > span:first-child { color: #b91c1c; }
+#tab-giuong .g-room.sapcho > h3 > span:first-child { color: #b45309; }
+#tab-giuong .g-room.full:not(.sapcho) > h3 > span:first-child { color: #b91c1c; }
+/* Huy hiệu sức chứa: phòng "sắp có chỗ" mang sắc amber thay vì đỏ, cho khớp tên phòng */
+#tab-giuong .g-cap.soon { color: #b45309; background: var(--amber-bg); border-color: #f5dda6; }
+/* "sắp có N chỗ" trong dòng phòng — nói bằng CHỮ, để người không phân biệt màu vẫn đọc ra */
+#tab-giuong .g-room .rmeta b.soon { color: #b45309; }
 #tab-giuong .g-room h3 { margin: 0 0 3px; font-size: 15px; font-weight: 700; display: flex;
   justify-content: space-between; align-items: center; gap: 8px; }
 /* SỨC CHỨA = số giường HIS khai trong phòng (HIS không có trường sức chứa riêng) */

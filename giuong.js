@@ -375,14 +375,17 @@
     const html = D.khoas.map(khoaHtml).join("");
     // Lọc ra 0 giường mà trang chỉ trống trơn thì trông y hệt "mất dữ liệu" → nói rõ là do bộ lọc.
     const rong = dangLoc()
-      ? `<div class="g-empty-msg">Không có giường nào khớp bộ lọc.
+      ? `<div class="g-empty-msg">Không còn giường nào với bộ lọc đang bật.
            <span class="g-sub">Thử bỏ bớt trạng thái đang chọn hoặc xóa từ khóa tìm.</span></div>`
       : `<div class="g-empty-msg">Không có dữ liệu.</div>`;
     $("#g-body").innerHTML = tomTatLoc() + (html || rong);
   }
 
   /* Bấm lọc xong phải thấy NGAY còn lại bao nhiêu — và thấy mình đang lọc GÌ, vì thanh chú giải
-     có thể đã cuộn khuất trên ĐT. Số ở đây đếm từ chính thứ đang vẽ ra nên không thể lệch. */
+     có thể đã cuộn khuất trên ĐT.
+     ⚠️ `dem.g` đếm giường THUỘC BỘ LỌC (`r.hien`), cố ý KHÔNG đếm chip trống được vẽ thêm: có vậy nó
+     mới bằng đúng con số in trên nút lọc, bấm nút nào ra số nấy. Chỗ lệch với thứ mắt thấy được NÓI
+     RA ở tooltip, không im lặng (luật 14). */
   function tomTatLoc() {
     if (!dangLoc()) return "";
     const phan = [];
@@ -400,7 +403,7 @@
        tự kéo chip vừa bấm vào giữa ⇒ nút "Bỏ lọc" ở đầu hàng trôi ra khỏi tầm mắt (đo thật ở
        390px). Dòng này luôn nằm ngay đầu phần kết quả nên là chỗ chắc chắn với tới được. */
     return `<div class="g-flt-sum">Đang lọc: <b>${phan.join(" · ")}</b>
-      <span class="num">${n(dem.g)} giường · ${n(dem.p)} phòng · ${n(dem.k)} khoa</span>
+      <span class="num" title="Đếm theo GIƯỜNG thuộc bộ lọc đang bật. Giường trống vẫn luôn được hiện thêm trong từng phòng để thấy phòng nào còn nhận được người.">${n(dem.g)} giường · ${n(dem.p)} phòng · ${n(dem.k)} khoa</span>
       <button type="button" class="g-sum-clear" data-clear="1">✕ Bỏ lọc</button></div>`;
   }
 
@@ -449,11 +452,12 @@
           html += `<div class="g-floor">${fl}</div><div class="g-rooms">`;
           lastFloor = fl; open = true;
         }
-        // ĐẾM theo cả phòng (sự thật về phòng đó) · VẼ theo phần khớp bộ lọc.
+        // ĐẾM theo cả phòng (sự thật về phòng đó) · thẻ CÓ NGƯỜI vẽ theo bộ lọc · chip TRỐNG vẽ hết.
         const coNguoi = r.giuong.filter(g => g.nguoi.length).length;
         const conTrong = r.giuong.length - coNguoi;
         const busy = r.hien.filter(g => g.nguoi.length);
-        const free = r.hien.filter(g => !g.nguoi.length);
+        const free = r.giuong.filter(g => !g.nguoi.length);   // KHÔNG lọc — xem chú thích ở anLoc()
+        const ve = busy.concat(free);                         // đúng thứ đang vẽ ra (cho maNote)
         const dungMa = coGiuongDungMa(r);
         const wide = busy.length > 3 ? " wide" : "";   // phòng đông → trải ngang cả hàng
         const day = conTrong === 0;
@@ -474,19 +478,19 @@
         html += `<div class="g-room${wide}${conCho}${sapCho} ${coNguoi === 0 ? "empty" : (day ? "full" : "")}">
           <h3><span>${esc(r.ten)}</span>
             <span class="g-cap${day ? (sapCho ? " soon" : " done") : ""}">tối đa ${r.giuong.length} giường</span></h3>
-          <div class="rmeta">${dangLoc()
-            ? `<b>${r.hien.length}</b>/${r.giuong.length} giường khớp bộ lọc${anLoc(busy.length, free.length, coNguoi, conTrong)}`
-            // Nói bằng CHỮ, không chỉ bằng màu (WCAG 1.4.1): "đã kín · sắp có N chỗ" — người không
-            // phân biệt được xanh/amber/đỏ vẫn đọc ra được phòng nào sắp nhận được người.
-            : `<b>${coNguoi}</b> giường có người · <b>${conTrong}</b> trống${
-                day ? (nSapRa ? ` · <b>đã kín</b> · <b class="soon">sắp có ${nSapRa} chỗ</b>` : " · <b>đã kín</b>") : ""}`}</div>
+          <!-- Nói bằng CHỮ, không chỉ bằng màu (WCAG 1.4.1): "đã kín · sắp có N chỗ" — người không
+               phân biệt được xanh/amber/đỏ vẫn đọc ra được phòng nào sắp nhận được người.
+               MỘT dòng cho mọi bộ lọc: số luôn là sự thật CẢ PHÒNG, phần bị bộ lọc ẩn nói ở cuối. -->
+          <div class="rmeta"><b>${coNguoi}</b> giường có người · <b>${conTrong}</b> trống${
+              day ? (nSapRa ? ` · <b>đã kín</b> · <b class="soon">sắp có ${nSapRa} chỗ</b>` : " · <b>đã kín</b>") : ""
+            }${anLoc(coNguoi - busy.length)}</div>
           ${busy.length ? `<div class="g-beds">${busy.map(bedHtml).join("")}</div>` : ""}
           ${free.length ? `<div class="g-frees"><span class="lb">Trống:</span>
             ${free.map(g => { const pk = phongKhac(g, r, dungMa);
               return `<span class="g-chip${pk ? " manote" : ""}"${pk
                 ? ` title="HIS khai giường này thuộc ${esc(r.ten)}, dù số hiệu không theo mã phòng ${esc(r.ma)}"` : ""
                 }>${esc(g.so_hieu)}</span>`; }).join("")}</div>` : ""}
-          ${maNote(r.hien, r, dungMa)}
+          ${maNote(ve, r, dungMa)}
           </div>`;
       }
       if (open) html += "</div>";
@@ -617,7 +621,7 @@
     });
     const p = $("#g-preset");
     if (p) {
-      p.setAttribute("aria-pressed", preset ? "true" : "false");
+      p.setAttribute("aria-pressed", preset === "sap_co" ? "true" : "false");
       if (d) put(p.querySelector(".c"), d.preset);
     }
     const c = $("#g-lgClear"); if (c) c.classList.toggle("an", !dangLoc());
@@ -648,7 +652,7 @@
     });
     // TRỤC 1 — chọn MỘT (loại trừ nhau): bấm là thay giá trị, không cộng thêm.
     $$(".g-sg").forEach(b => b.onclick = () => {
-      preset = false; ttTruc = b.dataset.tt;
+      preset = ""; ttTruc = b.dataset.tt;
       moKhoa(false);          // ĐT: bảng khoa đang bung thì che mất kết quả vừa lọc
       capNhatNutLoc(); veLaiKetQua();
     });
@@ -666,7 +670,7 @@
     // TRỤC 2 — chọn NHIỀU (HOẶC trong trục, VÀ với trục 1). Bấm lại = tắt.
     $$(".g-lg").forEach(b => b.onclick = () => {
       const t = b.dataset.sg;
-      if (preset) { preset = false; ttTruc = ""; }     // preset là chế độ riêng → bấm chip là rời nó
+      if (preset) { preset = ""; ttTruc = ""; }        // preset là chế độ riêng → bấm chip là rời nó
       if (sigLoc.has(t)) sigLoc.delete(t); else sigLoc.add(t);
       /* Dấu hiệu chỉ tồn tại ở giường CÓ NGƯỜI ⇒ để trục 1 ở "Trống" thì chắc chắn ra 0 giường.
          Baymard: đừng để người dùng rơi vào tổ hợp không thể có kết quả → tự chuyển sang "Có
@@ -676,13 +680,17 @@
       capNhatNutLoc(); veLaiKetQua();
     });
     // PRESET: "chỗ sắp có" = trống HOẶC sắp ra viện — HOẶC chéo trục nên phải là chế độ riêng.
-    $("#g-preset").onclick = () => {
-      preset = !preset;
+    /* Hai preset LOẠI TRỪ NHAU (mỗi cái là một câu hỏi khác nhau) → bấm cái này thì cái kia tắt.
+       Bấm lại chính nó = tắt. Bật preset thì xoá hai trục, kẻo dòng tóm tắt nói ba thứ cùng lúc. */
+    const datPreset = (v) => {
+      preset = preset === v ? "" : v;
       if (preset) { ttTruc = ""; sigLoc.clear(); }
       moKhoa(false); capNhatNutLoc(); veLaiKetQua();
     };
+    $("#g-preset").onclick = () => datPreset("sap_co");
+    $("#g-presetThieu").onclick = () => datPreset("khoa_thieu");
     const boLoc = () => {
-      preset = false; ttTruc = ""; sigLoc.clear();
+      preset = ""; ttTruc = ""; sigLoc.clear();
       const inp = $("#g-q"); if (inp) { inp.value = ""; q = ""; }   // "Bỏ lọc" phải bỏ CẢ từ khóa
       capNhatNutLoc(); veLaiKetQua();
     };
