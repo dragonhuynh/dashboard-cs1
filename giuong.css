@@ -126,6 +126,8 @@
   background: var(--brand-blue-50); border: 1px solid #bcd9ee; border-radius: 8px;
   padding: 7px 11px; margin-bottom: 12px; font-size: 13px; color: var(--brand-blue-dark); }
 #tab-giuong .g-flt-sum .num { color: var(--muted); font-size: 12.5px; }
+/* Phần phòng bị bộ lọc ẩn — nói ra chứ không để người xem tự đoán (luật 14) */
+#tab-giuong .rmeta-an { color: var(--muted); border-bottom: 1px dotted #c9ccd1; cursor: help; }
 #tab-giuong .g-sum-clear { margin-left: auto; font: inherit; font-size: 12.5px; color: var(--muted);
   background: #fff; border: 1px dashed #bcd9ee; border-radius: 20px; padding: 3px 10px; cursor: pointer; }
 #tab-giuong .g-sum-clear:hover { color: var(--red); border-color: #eda3a3; }
@@ -197,7 +199,16 @@
 /* Phòng KHÔNG có ai nằm → tô NGUYÊN Ô xanh lá nhạt (user chốt 2026-08-10): người xếp giường quét
    mắt tìm chỗ trống, ô màu bắt mắt nhanh hơn là đọc chữ "0 có người" ở dòng nhỏ.
    ⚠️ Chip trống bên trong phải ĐẬM HƠN nền ô, nếu không nó cùng màu nền → biến mất. */
+/* PHÒNG CÒN CHỖ → viền xanh lá quanh khung (user chốt 2026-08-10). Chỉ ~131/519 phòng có viền nên
+   nó là TÍN HIỆU, không phải trang trí; 388 phòng kín để viền xám như cũ.
+   ⚠️ Dùng `box-shadow: inset` cộng thêm 1px thay vì `border-width: 2px`: đổi bề dày viền làm mọi thẻ
+   phòng xê dịch 1px mỗi bên (lưới 519 phòng nhấp nhô mỗi lần lọc). Inset không chiếm chỗ.
+   ⚠️ KHÔNG mã hóa chỉ bằng màu (WCAG 1.4.1): dòng dưới tên phòng vẫn ghi bằng chữ "N trống", và
+   phòng kín có huy hiệu đỏ "đã kín" — người không phân biệt được màu vẫn đọc ra. */
+#tab-giuong .g-room.concho { border-color: #86c99b; box-shadow: inset 0 0 0 1px #86c99b; }
 #tab-giuong .g-room.empty { background: var(--green-bg); border-color: #bbf7d0; }
+/* Phòng rỗng hẳn: nền đã xanh nhạt nên viền phải ĐẬM hơn nền mới thấy được đường bao */
+#tab-giuong .g-room.empty.concho { border-color: #6cb583; box-shadow: inset 0 0 0 1px #6cb583; }
 #tab-giuong .g-room.empty .g-chip { background: #dcfce7; border-color: #86efac; }
 #tab-giuong .g-room.empty .g-frees { border-top-color: #bbf7d0; }
 #tab-giuong .g-room h3 { margin: 0 0 3px; font-size: 15px; font-weight: 700; display: flex;

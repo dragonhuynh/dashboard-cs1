@@ -358,6 +358,20 @@
       <button type="button" class="g-sum-clear" data-clear="1">✕ Bỏ lọc</button></div>`;
   }
 
+  /* ĐANG LỌC: dòng phòng vẫn đếm CẢ PHÒNG (`r.giuong`) nhưng chỉ VẼ giường khớp (`r.hien`) ⇒ người
+     xem đọc "cả phòng: 5 có người · 1 trống" mà chỉ thấy 1 chip trống, hoặc thấy 2 thẻ người mà
+     không thấy chip trống nào → kết luận phần mềm sai. User báo đúng như vậy HAI lần trong một buổi
+     (Phòng E108 · Phòng N503). Chữa bằng cách NÓI RA phần bị ẩn (luật 14 · log lỗi L11): số ẩn =
+     số cả phòng − số đang vẽ, tính từ chính thứ đang vẽ nên không thể lệch. */
+  function anLoc(veCoNguoi, veTrong, coNguoi, conTrong) {
+    const an = [], aNg = coNguoi - veCoNguoi, aTr = conTrong - veTrong;
+    if (aNg > 0) an.push(`${aNg} có người`);
+    if (aTr > 0) an.push(`${aTr} trống`);
+    return an.length
+      ? ` · <span class="rmeta-an" title="Những giường này không thuộc bộ lọc đang bật nên không được vẽ. Bấm “Bỏ lọc” để xem đủ cả phòng.">đang ẩn: ${an.join(" · ")}</span>`
+      : "";
+  }
+
   function khoaHtml(k, idx) {
     let html = "", lastFloor = "___";
     // `hien` = giường KHỚP bộ lọc (thứ được vẽ) · `giuong` giữ NGUYÊN cả phòng (thứ để ĐẾM).
@@ -390,11 +404,16 @@
         const dungMa = coGiuongDungMa(r);
         const wide = busy.length > 3 ? " wide" : "";   // phòng đông → trải ngang cả hàng
         const day = conTrong === 0;
-        html += `<div class="g-room${wide} ${coNguoi === 0 ? "empty" : (day ? "full" : "")}">
+        /* VIỀN XANH = phòng CÒN NHẬN ĐƯỢC NGƯỜI (user chốt 2026-08-10). Xét theo CẢ PHÒNG (`conTrong`),
+           không theo phần đang lọc — nếu không thì bấm lọc "Có người" là mọi viền xanh biến mất trong
+           khi phòng vẫn còn chỗ. Đi kèm nền: 0 người → nền xanh nhạt · 0 trống → nền đỏ nhạt (giữ
+           nguyên luật cũ). Ba mức không đá nhau: NỀN nói mức đầy, VIỀN nói "còn chỗ hay không". */
+        const conCho = conTrong > 0 ? " concho" : "";
+        html += `<div class="g-room${wide}${conCho} ${coNguoi === 0 ? "empty" : (day ? "full" : "")}">
           <h3><span>${esc(r.ten)}</span>
             <span class="g-cap${day ? " done" : ""}">tối đa ${r.giuong.length} giường</span></h3>
           <div class="rmeta">${dangLoc()
-            ? `<b>${r.hien.length}</b> giường khớp · cả phòng: ${coNguoi} có người · ${conTrong} trống`
+            ? `<b>${r.hien.length}</b>/${r.giuong.length} giường khớp bộ lọc${anLoc(busy.length, free.length, coNguoi, conTrong)}`
             : `<b>${coNguoi}</b> giường có người · <b>${conTrong}</b> trống${day ? " · <b>đã kín</b>" : ""}`}</div>
           ${busy.length ? `<div class="g-beds">${busy.map(bedHtml).join("")}</div>` : ""}
           ${free.length ? `<div class="g-frees"><span class="lb">Trống:</span>
