@@ -14,9 +14,31 @@ function fmt(n) { return (n ?? 0).toLocaleString("vi-VN"); }
 function bnum(n) { return (n || 0) ? `<b>${fmt(n)}</b>` : `<b class="z0">0</b>`; }
 function znum(n) { return (n || 0) ? fmt(n) : `<span class="z0">0</span>`; }
 
-// Ngưỡng "dữ liệu cũ" (phút) — mỗi khối chụp định kỳ nhiều lần/ngày.
-const STALE_WARN_MIN = 120;   // > 2 giờ → theo dõi (cam)
-const STALE_BAD_MIN  = 240;   // > 4 giờ → cảnh báo cũ (đỏ)
+// Ngưỡng "dữ liệu cũ" (phút) — PHẢI bám sát CHU KỲ CHẠY THẬT: 5 phút (CLAUDE.md §14).
+// Trước đây để 120'/240' (kế thừa thời còn chạy tay vài lần/ngày): luồng chết **24 vòng
+// liên tiếp** mà trang vẫn im — đúng kiểu "số cũ nói dối im lặng" của log lỗi L03/L05b.
+// Tab Phòng·Giường đã dùng 15'/60' từ 22/07; nay 2 tab kia dùng cùng thang.
+const STALE_WARN_MIN = 15;    // > 15 phút (3 vòng hụt) → theo dõi (cam)
+const STALE_BAD_MIN  = 60;    // > 1 giờ  (12 vòng hụt) → cảnh báo cũ (đỏ)
+
+// ⚠️ NHƯNG luồng Phòng khám + CĐHA chỉ chạy TRONG GIỜ KHÁM (scraper: WORK_START/WORK_END
+// = 6:00–20:00). Ngoài khung đó, số cũ là ĐÚNG BẢN CHẤT chứ không phải hỏng — báo đỏ mỗi
+// tối là báo động giả, mà báo động giả lặp lại thì tới lúc hỏng thật không ai còn nhìn nữa.
+// (Tab Phòng·Giường KHÔNG áp luật này: người bệnh nội trú nằm 24/24, luồng chạy cả đêm.)
+const GIO_KHAM = [6, 20];
+function trongGioKham(d) { const h = d.getHours(); return h >= GIO_KHAM[0] && h < GIO_KHAM[1]; }
+
+// Mốc chụp mới nhất mà ta CÓ QUYỀN mong đợi tại thời điểm `now`.
+// Trong giờ khám: phải luôn mới. Ngoài giờ: mốc hợp lệ là lần chụp cuối của khung vừa qua
+// → số của 19:58 xem lúc 22:00 vẫn là "mới", còn số của hôm qua thì vẫn bị bắt là CŨ.
+function mocMongDoi(now) {
+  const d = new Date(now);
+  if (trongGioKham(d)) return now;
+  const k = new Date(d);
+  k.setHours(GIO_KHAM[1], 0, 0, 0);                       // 20:00 hôm nay
+  if (d.getHours() < GIO_KHAM[0]) k.setDate(k.getDate() - 1);  // trước 6h sáng → 20:00 hôm qua
+  return k.getTime();
+}
 
 // Badge mốc giờ chụp RIÊNG từng khối: giờ tuyệt đối + tương đối + chỉ báo cũ/mới.
 // Không chỉ dựa vào màu (WCAG 1.4.1): kèm icon hình + chữ "DỮ LIỆU CŨ" khi stale.
@@ -24,7 +46,9 @@ function freshnessBadge(iso) {
   if (!iso) return `<span class="freshness none">⏱ chưa có giờ chụp</span>`;
   const s = String(iso).replace(" ", "T");
   const then = new Date(s);
-  const ageMin = Math.max(0, Math.round((Date.now() - then.getTime()) / 60000));
+  // Đo tuổi so với MỐC MONG ĐỢI, không so với "bây giờ" — xem `mocMongDoi`.
+  const ageMin = Math.max(0, Math.round((mocMongDoi(Date.now()) - then.getTime()) / 60000));
+  const ngoaiGio = !trongGioKham(new Date());
   const hhmm = s.slice(11, 16);
   const abs = then.toLocaleString("vi-VN");
   // STALE: banner có cấu trúc 3 phần (nhãn · giờ · việc cần làm) → không còn khoảng đỏ trống.
@@ -33,11 +57,13 @@ function freshnessBadge(iso) {
       + `<span class="fdot" aria-hidden="true"></span>`
       + `<b class="f-tag">DỮ LIỆU CŨ</b>`
       + `<span class="f-mid">📸 Ảnh chụp ${hhmm} · ${timeAgo(iso)}</span>`
-      + `<span class="f-act">→ Chạy cập nhật để lấy số mới</span></time>`;
+      + `<span class="f-act">→ Kiểm luồng tự cập nhật (chu kỳ 5 phút)</span></time>`;
   }
   const lv = ageMin >= STALE_WARN_MIN ? "warn" : "fresh";
+  // Ngoài giờ khám thì NÓI RA, kẻo người xem thấy mốc 19:58 lúc 22:00 lại tưởng trang treo.
+  const ghiChu = ngoaiGio ? ` · ngoài giờ khám` : "";
   return `<time class="freshness ${lv}" datetime="${s}" title="Chụp lúc ${abs} (GMT+7)">`
-    + `<span class="fdot" aria-hidden="true"></span>📸 Chụp lúc ${hhmm} · ${timeAgo(iso)}</time>`;
+    + `<span class="fdot" aria-hidden="true"></span>📸 Chụp lúc ${hhmm} · ${timeAgo(iso)}${ghiChu}</time>`;
 }
 
 // ---- Dải HÀNH ĐỘNG: dịch số → mệnh lệnh điều phối. Người quản lý đọc DÒNG NÀY trước tiên. ----
