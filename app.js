@@ -1719,12 +1719,23 @@ function btrGop(bt, ngays) {
     return mo.map(v => v != null && mx > 0 && v >= mx * 0.25);
   };
   const loc = (arr, ok) => arr.map((v, i) => ok[i] ? v : null);
-  // `lay(x)` trả về {mo,cho,xong} của một ngày, hoặc null nếu ngày đó không có nhóm này.
-  const benTu = (lay) => {
+  // `lays` = một hoặc NHIỀU hàm, mỗi hàm trả {mo,cho,xong} của một ngày (null nếu ngày đó không có
+  // nhóm này). Nhiều hàm = GỘP nhiều khu (xem BTR_KHU_GOP): CỘNG số gốc theo từng giờ trước, rồi
+  // mới lấy trung vị nhiều ngày, rồi mới chia tỷ số — KHÔNG cộng/bình quân các TỶ SỐ (cùng lý do
+  // đã ghi ở đầu hàm: giữ đúng quan hệ "người chờ ÷ phòng mở" của chính con số đang hiển thị).
+  // ⚠️ Cộng `null + số` phải ra SỐ, không ra null: khu này chưa có mốc thu mà khu kia có thì tổng
+  //    vẫn là sự thật quan sát được. Chỉ khi CẢ HAI rỗng mới để null (missing ≠ 0 — luật 5).
+  const benTu = (...lays) => {
     const g = (f) => {
+      // Tách chuỗi MỘT LẦN cho mỗi (ngày × khu), đừng tách lại trong vòng lặp giờ.
+      const cot = ls.map(x => lays.map(lay => { const o = lay(x); return o ? btrTach(o[f]) : null; }));
       const out = [];
       for (let i = 0; i < N; i++) {
-        out.push(btrTrungVi(ls.map(x => { const o = lay(x); return o ? btrTach(o[f])[i] : null; })));
+        out.push(btrTrungVi(cot.map(ds => {
+          let t = null;
+          ds.forEach(a => { if (a && a[i] != null) t = (t == null ? 0 : t) + a[i]; });
+          return t;
+        })));
       }
       return out;
     };
@@ -1741,13 +1752,30 @@ function btrGop(bt, ngays) {
   // TỪNG KHU MỘT BẢNG (user chốt). Danh sách khu lấy từ chính dữ liệu, giữ thứ tự scraper xuất ra
   // (= thứ tự đi thực địa TOA_NHA_ORDER) — đừng sắp lại theo mức nặng, khối sẽ đảo chỗ mỗi vòng.
   const tenKhu = Object.keys((ls[0] && ls[0].khu) || {});
-  const khu = tenKhu.map(k => ({
-    ten: k,
-    nhan: ((bt.khu || []).find(z => z.khu === k) || {}).khu_nhan || k,
-    pk: benTu(x => ((x.khu || {})[k] || {}).pk),
-    sa: ls.some(x => ((x.khu || {})[k] || {}).sa) ? benTu(x => ((x.khu || {})[k] || {}).sa) : null,
-    n_sa: ((bt.khu || []).find(z => z.khu === k) || {}).sa || 0,
-  }));
+  const timKhu = (k) => (bt.khu || []).find(z => z.khu === k) || {};
+  const motKhu = (ks) => ({
+    ten: ks.join(" + "),
+    nhan: ks.map(k => timKhu(k).khu_nhan || k).join(" + "),
+    n_khu: ks.length,
+    pk: benTu(...ks.map(k => (x => ((x.khu || {})[k] || {}).pk))),
+    sa: ls.some(x => ks.some(k => ((x.khu || {})[k] || {}).sa))
+      ? benTu(...ks.map(k => (x => ((x.khu || {})[k] || {}).sa))) : null,
+    n_sa: ks.reduce((s, k) => s + (timKhu(k).sa || 0), 0),
+  });
+  // GỘP các khu dùng chung phòng siêu âm (BTR_KHU_GOP). Sắp mỗi nhóm theo thứ tự `tenKhu` rồi dựng
+  // bảng ở THÀNH VIÊN ĐẦU TIÊN → bảng gộp nằm đúng chỗ khu đầu tiên của nó, thứ tự đi thực địa
+  // không bị đảo; các thành viên sau bị bỏ qua vì số của chúng đã nằm trong bảng gộp.
+  const nhom = (typeof BTR_KHU_GOP === "undefined" ? [] : BTR_KHU_GOP)
+    .map(g => g.filter(k => tenKhu.includes(k))
+                .sort((a, b) => tenKhu.indexOf(a) - tenKhu.indexOf(b)))
+    .filter(g => g.length > 1);
+  const trongNhom = new Set(nhom.flat());
+  const khu = [];
+  tenKhu.forEach(k => {
+    const g = nhom.find(x => x[0] === k);
+    if (g) khu.push(motKhu(g));
+    else if (!trongNhom.has(k)) khu.push(motKhu([k]));
+  });
   const cum = (bt.pk.cum || []).map((cm, j) => ({ ...cm, mo: gop(x => (x.cum || [])[j]) }));
   // `gio` đi kèm để V tự đủ dùng — btrGioHien()/btrBang() nhận V, không được buộc phải cầm thêm
   // `bt` mới biết dải giờ (hai nguồn cho một sự thật là chỗ sinh ra lệch).
