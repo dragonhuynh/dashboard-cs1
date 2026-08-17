@@ -1,4 +1,4 @@
-// Dashboard điều phối phòng khám — đọc window.DASHBOARD_DATA (data.js).
+﻿// Dashboard điều phối phòng khám — đọc window.DASHBOARD_DATA (data.js).
 // Khi mở qua http server cũng thử fetch data.json để lấy bản mới nhất.
 
 function levelOf(room) {
@@ -1719,8 +1719,16 @@ function btrGop(bt, ngays) {
     return mo.map(v => v != null && mx > 0 && v >= mx * 0.25);
   };
   const loc = (arr, ok) => arr.map((v, i) => ok[i] ? v : null);
-  const ben = (k) => {
-    const mo = gop(x => x[k].mo), cho = gop(x => x[k].cho), xong = gop(x => x[k].xong);
+  // `lay(x)` trả về {mo,cho,xong} của một ngày, hoặc null nếu ngày đó không có nhóm này.
+  const benTu = (lay) => {
+    const g = (f) => {
+      const out = [];
+      for (let i = 0; i < N; i++) {
+        out.push(btrTrungVi(ls.map(x => { const o = lay(x); return o ? btrTach(o[f])[i] : null; })));
+      }
+      return out;
+    };
+    const mo = g("mo"), cho = g("cho"), xong = g("xong");
     const ok = chinh(mo);
     return { mo, cho, xong, gio_chinh: ok,
              // `moi_phong` giữ NGUYÊN mọi giờ (nó là sự thật quan sát được, không phải suy ra tốc
@@ -1729,10 +1737,21 @@ function btrGop(bt, ngays) {
              nang_suat: loc(ty(xong, mo), ok),
              giai_toa: loc(ty(cho, xong), ok) };
   };
+  const ben = (k) => benTu(x => x[k]);
+  // TỪNG KHU MỘT BẢNG (user chốt). Danh sách khu lấy từ chính dữ liệu, giữ thứ tự scraper xuất ra
+  // (= thứ tự đi thực địa TOA_NHA_ORDER) — đừng sắp lại theo mức nặng, khối sẽ đảo chỗ mỗi vòng.
+  const tenKhu = Object.keys((ls[0] && ls[0].khu) || {});
+  const khu = tenKhu.map(k => ({
+    ten: k,
+    nhan: ((bt.khu || []).find(z => z.khu === k) || {}).khu_nhan || k,
+    pk: benTu(x => ((x.khu || {})[k] || {}).pk),
+    sa: ls.some(x => ((x.khu || {})[k] || {}).sa) ? benTu(x => ((x.khu || {})[k] || {}).sa) : null,
+    n_sa: ((bt.khu || []).find(z => z.khu === k) || {}).sa || 0,
+  }));
   const cum = (bt.pk.cum || []).map((cm, j) => ({ ...cm, mo: gop(x => (x.cum || [])[j]) }));
   // `gio` đi kèm để V tự đủ dùng — btrGioHien()/btrBang() nhận V, không được buộc phải cầm thêm
   // `bt` mới biết dải giờ (hai nguồn cho một sự thật là chỗ sinh ra lệch).
-  return { gio: bt.gio, pk: { ...ben("pk"), cum }, sa: ben("sa"), n_ngay: ls.length,
+  return { gio: bt.gio, pk: { ...ben("pk"), cum }, sa: ben("sa"), khu, n_ngay: ls.length,
            ngays: ls.map(x => ({ ngay: x.ngay, thu: x.thu })) };
 }
 
@@ -1851,7 +1870,30 @@ function btrLuoi(bt, H) {
 
 // Bảng số — BẮT BUỘC có: trên điện thoại không rê chuột được nên tooltip vô dụng, và người đọc
 // cần con số chính xác chứ không chỉ chiều cao cột (chuẩn tiếp cận: mọi biểu đồ phải có bản bảng).
-function btrBang(bt, V, mot) {
+// MỘT BẢNG CHO MỖI KHU (user chốt 2026-08-17) + một bảng tổng khớp với biểu đồ ở trên.
+// Khu không có phòng siêu âm thì KHÔNG vẽ 6 cột rỗng — nói thẳng bằng chữ, đừng để người đọc
+// nhìn một hàng dấu "—" rồi tưởng mất số liệu (luật 5 · 14).
+function btrBangKhu(bt, V, mot) {
+  const cai = [{ nhan: "Cả 3 khu", pk: V.pk, sa: V.sa, tong: true }]
+    .concat((V.khu || []).map(k => ({ nhan: k.nhan, pk: k.pk, sa: k.sa, n_sa: k.n_sa })));
+  return `<details class="btr-bang"><summary>Xem bảng số theo từng khu</summary>
+    ${cai.map(x => btrMotBang(bt, x, mot)).join("")}
+    <p class="btr-note">“Giải toả” = số người đang chờ ÷ tốc độ giải quyết của chính giờ đó —
+      tức <b>với nhịp làm việc lúc đó thì bao lâu mới hết hàng</b>. Ô “—” là giờ chưa đo được
+      (chưa có mốc thu, chưa làm xong ca nào, hoặc ngoài giờ hoạt động chính nên tỷ số không có
+      nghĩa).</p></details>`;
+}
+
+function btrMotBang(bt, x, mot) {
+  const V = { pk: x.pk, sa: x.sa };
+  const coSa = !!x.sa;
+  const tieu = x.tong ? `<h4 class="btr-bh">Cả 3 khu <span>— khớp với biểu đồ ở trên</span></h4>`
+    : `<h4 class="btr-bh">${esc(x.nhan)}${coSa ? `<span>— có ${x.n_sa} phòng siêu âm</span>`
+        : `<span class="btr-nosa">— khu này không có phòng siêu âm nào</span>`}</h4>`;
+  return tieu + btrBang(bt, V, mot, coSa);
+}
+
+function btrBang(bt, V, mot, coSa) {
   let tr = "";
   // NỀN 2 MÀU tách hai bên (user chốt 2026-08-17): 12 cột số liền nhau thì mắt không biết cột nào
   // thuộc phòng khám, cột nào thuộc siêu âm. Nền dùng ĐÚNG token nhạt của 2 màu chuỗi trên biểu đồ
@@ -1863,24 +1905,22 @@ function btrBang(bt, V, mot) {
       + `<td class="${c}">${btrSo(V[s].xong[i], !mot)}</td>`
       + `<td class="${c} btr-r">${btrSo(V[s].moi_phong[i], true)}</td>`
       + `<td class="${c} btr-r">${btrSo(V[s].nang_suat[i], true)}</td>`
-      + `<td class="${c} btr-r">${btrSo(V[s].giai_toa[i], true)}</td>`;
+      // lớp `btr-gt` để phép nghiệm thu bám vào Ý NGHĨA ô, không bám vào VỊ TRÍ cột (bảng của khu
+      // không có siêu âm chỉ 6 cột, bảng khu có siêu âm 12 cột — đếm theo chỉ số là vỡ).
+      + `<td class="${c} btr-r btr-gt">${btrSo(V[s].giai_toa[i], true)}</td>`;
   };
   bt.gio.forEach((h, i) => {
     if (V.pk.mo[i] == null && V.pk.cho[i] == null) return;
-    tr += `<tr><th>${h}h</th>${o("pk", i)}${o("sa", i)}</tr>`;
+    tr += `<tr><th>${h}h</th>${o("pk", i)}${coSa ? o("sa", i) : ""}</tr>`;
   });
   const cot = (c) => `<th class="${c}">Phòng mở</th><th class="${c}">Đang chờ</th>
       <th class="${c}">Xong trong giờ</th><th class="${c}">Chờ/phòng</th>
       <th class="${c}">Ca/phòng/giờ</th><th class="${c}">Giải toả (giờ)</th>`;
-  return `<details class="btr-bang"><summary>Xem bảng số</summary>
-    <div class="btr-scroll"><table>
+  return `<div class="btr-scroll"><table>
       <thead><tr><th rowspan="2">Giờ</th><th colspan="6" class="cpk">Phòng khám</th>
-        <th colspan="6" class="csa">Phòng siêu âm</th></tr>
-      <tr>${cot("cpk")}${cot("csa")}</tr></thead>
-      <tbody>${tr}</tbody></table></div>
-    <p class="btr-note">“Giải toả” = số người đang chờ ÷ tốc độ giải quyết của chính giờ đó —
-      tức <b>với nhịp làm việc lúc đó thì bao lâu mới hết hàng</b>. Ô “—” là giờ chưa đo được
-      (chưa có mốc thu, hoặc chưa làm xong ca nào nên không chia được).</p></details>`;
+        ${coSa ? `<th colspan="6" class="csa">Phòng siêu âm</th>` : ""}</tr>
+      <tr>${cot("cpk")}${coSa ? cot("csa") : ""}</tr></thead>
+      <tbody>${tr}</tbody></table></div>`;
 }
 
 // Nhận định — CHỈ nói điều đọc thẳng ra từ số, không suy diễn nguyên nhân (R09).
@@ -2039,7 +2079,7 @@ function renderBoTri(bt) {
     <p class="btr-note">Mỗi ô là một tầng, dùng chung một thang đo nên so được tầng này với tầng
       kia. Số bên phải tên tầng = <b>số phòng cùng hoạt động lúc cao nhất / tổng số phòng</b>.</p>
     ${btrLuoi(V, H)}
-    ${btrBang(bt, V, mot)}`;
+    ${btrBangKhu(bt, V, mot)}`;
 }
 
 // Bấm chọn chế độ / đổi ngày → vẽ lại. Uỷ quyền sự kiện vì khối được dựng lại mỗi vòng 5 phút.
@@ -3260,7 +3300,7 @@ if (_btnPrint) _btnPrint.addEventListener("click", () => window.print());
 // Nút gập/mở khối phân tích của tab CĐHA (câu hỏi phân tích → không hiện mặc định, §12.5).
 // ⚠️ Mỗi khối một KHOÁ NHỚ RIÊNG: dùng chung khoá thì mở khối này, lần tự nạp lại sau (5') bung
 //    nhầm cả khối kia (đúng bẫy đã ghi ở §12.10 với 2 <details> trong cùng một thẻ).
-// ⚠️ "Bố trí phòng theo khung giờ" đã RA KHỎI danh sách này (user chốt 2026-08-18: luôn mở, không
+// ⚠️ "Bố trí phòng theo khung giờ" đã RA KHỎI danh sách này (user chốt 2026-08-17: luôn mở, không
 //    có nút đóng). Giữ vòng lặp dạng danh sách để thêm khối gập mới không phải viết lại; đừng thêm
 //    `cls-botri-toggle` trở lại — phần tử đó không còn tồn tại trong index.html.
 [["cls-svc-toggle", "cls-svc", "cls_svc_open"]].forEach(([bId, sId, KEY]) => {

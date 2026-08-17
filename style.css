@@ -1911,3 +1911,12 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   .btr-range { width: 100%; }
   .btr-range input { flex: 1 1 0; min-width: 0; }
 }
+
+/* Bảng số TÁCH THEO KHU (user chốt 2026-08-17) — mỗi khu một bảng, có tiêu đề riêng. */
+.btr-bh {
+  font-size: 13px; margin: 12px 0 4px; color: var(--ink); font-weight: 700;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline;
+}
+.btr-bh span { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.btr-bh .btr-nosa { color: var(--amber); font-weight: 600; }
+.btr-bang > summary + .btr-bh { margin-top: 6px; }
