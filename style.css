@@ -1815,6 +1815,16 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 .btr-bang thead th { color: var(--muted); font-weight: 600; text-align: center; white-space: nowrap; }
 .btr-bang tbody th { text-align: left; color: var(--ink); font-weight: 700; }
 .btr-bang .btr-r { color: var(--brand-blue-dark); font-weight: 600; }
+/* CỘT "GIỜ" DÍNH khi kéo ngang (ĐT: nội dung 1.063px / khung 370px). Kéo sang nửa siêu âm mà mốc
+   giờ trôi mất thì không biết đang đọc hàng nào — con số mất nghĩa.
+   ⚠️ Nền phải ĐẶC và đúng màu nền trang: đo thật, phía sau bảng là #f1f5f9 (body, style.css:14),
+      KHÔNG phải #fff — tô trắng là hiện một vệt trắng lạ chạy dọc bảng. Ô này không mang lớp
+      .cpk/.csa nên tự nó trong suốt, chữ các cột sẽ chạy xuyên qua nếu không tô. */
+.btr-bang th:first-child { position: sticky; left: 0; z-index: 2; background: #f1f5f9;
+  border-right: 1px solid var(--line); }
+.btr-bang thead th:first-child { z-index: 3; }
+/* Dấu hiệu "kéo ngang" — CHỈ ở ĐT (desktop bảng vừa khít, in ra là nhiễu). */
+.btr-keo { display: none; }
 
 @media (max-width: 720px) {
   #cls-botri { padding: 10px 10px 12px; }
@@ -1843,7 +1853,10 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 .btr-body { display: grid; grid-template-columns: 40px 1fr; align-items: stretch; }
 .btr-y {
   display: flex; flex-direction: column; justify-content: space-between;
-  padding: 14px 6px 0 0; text-align: right; font-size: 10px; color: var(--gray);
+  /* ⚠️ --muted #64748b (4,76:1), KHÔNG --gray #94a3b8: đây là chữ 10px, mà --gray chỉ đo được
+     2,59:1 trên nền trang — hụt xa ngưỡng 4,5:1 của WCAG 1.4.3. Cùng lỗi đã trị ngày 14/08 cho
+     dòng tình trạng phòng, chỗ này viết sau nên vấp lại. */
+  padding: 14px 6px 0 0; text-align: right; font-size: 10px; color: var(--muted);
   line-height: 1;
 }
 /* Lưới ngang mảnh: đủ để ước lượng chiều cao, không đủ để cướp sự chú ý của cột. */
@@ -1872,7 +1885,10 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 
 @media (max-width: 720px) {
   .btr-body { grid-template-columns: 30px 1fr; }
-  .btr-y { font-size: 9px; padding-right: 4px; }
+  /* GIỮ 10px, đừng hạ 9px: nhãn trục là con số duy nhất đọc được độ cao cột trên ĐT (không rê
+     chuột xem tooltip được). 9px + màu nhạt là mất luôn thang đo. */
+  .btr-y { font-size: 10px; padding-right: 4px; }
+  .btr-keo { display: block; font-size: 11px; color: var(--muted); margin: 4px 0 0; }
   .btr-b { max-width: 16px; }
   .btr-nhanmanh { padding: 10px 0 6px; }   /* KHÔNG đệm ngang — xem ghi chú ở .btr-nhanmanh */
   .btr-nhanmanh .btr-h { padding: 0 6px; }

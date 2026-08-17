@@ -1892,7 +1892,12 @@ function btrLuoi(bt, H) {
   let html = "", khuTruoc = null;
   cum.forEach(c => {
     if (c.khu !== khuTruoc) {
-      if (khuTruoc !== null) html += `</div>`;
+      // ⚠️ ĐÓNG CẢ HAI thẻ (.btr-cells VÀ .btr-khu). Bản trước chỉ đóng một → mỗi khu mới LỒNG vào
+      //    khu trước, và `.btr-grid` không bao giờ được đóng ⇒ trình duyệt tự đóng ở cuối chuỗi, kéo
+      //    theo cả BẢNG SỐ (`btrBangKhu` dựng ngay sau) vào NẰM TRONG lưới khu·tầng. Đo thật cây
+      //    DOM: TABLE → .btr-scroll → .btr-bang → .btr-khu → .btr-khu → .btr-grid. Đọc mã không
+      //    thấy — chỉ lộ ra khi đi ngược cây cha để tìm màu nền.
+      if (khuTruoc !== null) html += `</div></div>`;
       html += `<div class="btr-khu"><h4>${esc(c.khu_nhan)}</h4><div class="btr-cells">`;
       khuTruoc = c.khu;
     }
@@ -1934,7 +1939,8 @@ function btrLuoi(bt, H) {
           ${coSa ? `<span class="btr-cs sa">${dinhSa}/${c.n_phong_sa}</span>` : ""}</div>
         <div class="btr-mplot">${cols}</div></div>`;
   });
-  return `<div class="btr-grid">${html}</div></div>`;
+  // Đóng nốt .btr-cells + .btr-khu của khu CUỐI, rồi mới đóng .btr-grid — đủ 3 thẻ, cân bằng.
+  return `<div class="btr-grid">${html}${khuTruoc !== null ? "</div></div>" : ""}</div>`;
 }
 
 // Bảng số — BẮT BUỘC có: trên điện thoại không rê chuột được nên tooltip vô dụng, và người đọc
@@ -1969,11 +1975,17 @@ function btrMotBang(bt, x, mot) {
   // Bảng GỘP phải NÓI RA là gộp và vì sao (luật 14): người đọc thấy "Khu KM + Khu M" mà không có
   // lời giải thích thì không biết số đã cộng lại hay chỉ là hai khu xếp cạnh nhau.
   const gop = x.n_khu > 1;
-  const tieu = x.tong ? `<h4 class="btr-bh">${esc(x.nhan)} <span>— khớp với biểu đồ ở trên</span></h4>`
-    : `<h4 class="btr-bh">${esc(x.nhan)}${coSa ? `<span>— ${x.n_sa} phòng siêu âm</span>`
-        : `<span class="btr-nosa">— ${gop ? "các khu này" : "khu này"} không có phòng siêu âm
-            nào</span>`}${gop ? `<span>— số đã cộng lại vì ${x.n_khu} khu dùng chung phòng siêu
-            âm</span>` : ""}</h4>`;
+  // ⚠️ Ghép bằng MẢNG rồi join(" "), đừng nối chuỗi thẳng: bản trước dính liền thành
+  // "Khu KM + Khu M— 17 phòng siêu âm— số đã cộng lại…" (thiếu dấu cách trước mỗi gạch ngang).
+  const phu = [];
+  if (x.tong) {
+    phu.push(`<span>— khớp với biểu đồ ở trên</span>`);
+  } else {
+    phu.push(coSa ? `<span>— ${x.n_sa} phòng siêu âm</span>`
+      : `<span class="btr-nosa">— ${gop ? "các khu này" : "khu này"} không có phòng siêu âm nào</span>`);
+    if (gop) phu.push(`<span>— số đã cộng lại vì ${x.n_khu} khu dùng chung phòng siêu âm</span>`);
+  }
+  const tieu = `<h4 class="btr-bh">${esc(x.nhan)} ${phu.join(" ")}</h4>`;
   return tieu + btrBang(bt, V, mot, coSa);
 }
 
@@ -2000,7 +2012,11 @@ function btrBang(bt, V, mot, coSa) {
   const cot = (c) => `<th class="${c}">Phòng mở</th><th class="${c}">Đang chờ</th>
       <th class="${c}">Xong trong giờ</th><th class="${c}">Chờ/phòng</th>
       <th class="${c}">Ca/phòng/giờ</th><th class="${c}">Giải toả (giờ)</th>`;
-  return `<div class="btr-scroll"><table>
+  // ĐT: bảng 13 cột rộng ~1.060px trong khung 370px ⇒ phải kéo ngang 693px. Không nói ra thì nửa
+  // "Phòng siêu âm" coi như không tồn tại — người dùng chỉ thấy 4 cột và tưởng bảng chỉ có thế
+  // (luật 14). Dòng này CSS ẩn trên desktop (ở đó bảng vừa khít, không có gì phải kéo).
+  return `<p class="btr-keo">↔ Kéo ngang để xem${coSa ? " nửa <b>Phòng siêu âm</b>" : " hết cột"}</p>
+    <div class="btr-scroll"><table>
       <thead><tr><th rowspan="2">Giờ</th><th colspan="6" class="cpk">Phòng khám</th>
         ${coSa ? `<th colspan="6" class="csa">Phòng siêu âm</th>` : ""}</tr>
       <tr>${cot("cpk")}${coSa ? cot("csa") : ""}</tr></thead>
