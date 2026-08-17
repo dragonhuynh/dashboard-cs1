@@ -1899,9 +1899,14 @@ function btrLuoi(bt, H) {
     // Có phòng siêu âm ở cụm này không — cụm không có thì scraper xuất chuỗi RỖNG (không phải
     // dãy số 0), nhờ vậy phân biệt được "không có phòng" với "có phòng mà đang đóng".
     const coSa = c.n_phong_sa > 0;
+    // ⚠️ Cụm CHỈ CÓ PHÒNG SIÊU ÂM là có thật: Nhà KM tầng 2 (11 phòng) và tầng 3 (5 phòng) không có
+    //    phòng khám nào. Scraper vẫn xuất `mo` = dãy số 0 cho chúng (giao với tập rỗng), nên phải
+    //    chặn ở đây: vẽ cột 0 và in "0/0" xanh đọc ra thành "phòng khám đóng cửa hết", trong khi sự
+    //    thật là TẦNG ĐÓ KHÔNG CÓ PHÒNG KHÁM (luật 5 — số 0 nói dối im lặng). Đối xứng với `coSa`.
+    const coPk = c.n_phong > 0;
     let cols = "";
     gioH.forEach((h, i) => {
-      const v = c.mo[i], w = coSa ? c.mo_sa[i] : null;
+      const v = coPk ? c.mo[i] : null, w = coSa ? c.mo_sa[i] : null;
       // `return` chứ KHÔNG `continue`: đây là callback của forEach, không phải thân vòng lặp —
       // `continue` ở đây là LỖI CÚ PHÁP, và nó làm VỠ TOÀN BỘ app.js (cả 3 tab trắng, không chỉ
       // biểu đồ này). Cùng cách viết với btrBang() ngay dưới.
@@ -1918,13 +1923,14 @@ function btrLuoi(bt, H) {
     });
     const dinh = Math.max(0, ...c.mo.filter(v => v != null));
     const dinhSa = coSa ? Math.max(0, ...c.mo_sa.filter(v => v != null)) : 0;
-    const tip = `${c.khu_nhan} · ${c.tang || "chưa rõ tầng"} — phòng khám ${c.n_phong} `
-      + `(cao nhất ${dinh} cùng hoạt động)`
-      + (coSa ? ` · phòng siêu âm ${c.n_phong_sa} (cao nhất ${dinhSa})`
+    const tip = `${c.khu_nhan} · ${c.tang || "chưa rõ tầng"} — `
+      + (coPk ? `phòng khám ${c.n_phong} (cao nhất ${dinh} cùng hoạt động)`
+              : "không có phòng khám")
+      + (coSa ? ` · phòng siêu âm ${c.n_phong_sa} (cao nhất ${dinhSa} cùng hoạt động)`
               : " · không có phòng siêu âm");
     html += `<div class="btr-cell" title="${esc(tip)}">
         <div class="btr-cn">${esc(c.tang || "Chưa rõ tầng")}
-          <span class="btr-cs">${dinh}/${c.n_phong}</span>
+          ${coPk ? `<span class="btr-cs">${dinh}/${c.n_phong}</span>` : ""}
           ${coSa ? `<span class="btr-cs sa">${dinhSa}/${c.n_phong_sa}</span>` : ""}</div>
         <div class="btr-mplot">${cols}</div></div>`;
   });
@@ -2159,8 +2165,8 @@ function renderBoTri(bt) {
         <span class="btr-key"><i class="btr-sw btr-sa"></i>Phòng siêu âm</span></span></h3>
     <p class="btr-note">Mỗi ô là một tầng, dùng chung một thang đo nên so được tầng này với tầng
       kia. Số bên phải tên tầng = <b>số phòng cùng hoạt động lúc cao nhất / tổng số phòng</b>
-      (xanh = phòng khám, hồng = phòng siêu âm). Tầng không ghi số hồng là
-      <b>tầng đó không có phòng siêu âm nào</b>.</p>
+      (xanh = phòng khám, hồng = phòng siêu âm). Thiếu số nào là tầng đó <b>không có loại phòng
+      đó</b> — ví dụ Khu KM tầng 2 và tầng 3 chỉ có phòng siêu âm, không có phòng khám.</p>
     ${btrLuoi(V, H)}
     ${btrBangKhu(bt, V, mot)}`;
 }
