@@ -1681,8 +1681,11 @@ function btrPanel(cfg) {
       cols += `<div class="btr-col btr-na" title="${h}h — chưa có số liệu"></div>`;
       return;
     }
+    // Đơn vị ghi THEO TỪNG CHUỖI: hai chuỗi trong panel cùng THANG ĐO nhưng khác danh từ
+    // ("người chờ" ⇄ "ca chưa xong"). Ghép chung thành "người · ca" thì mỗi con số đọc ra hai
+    // nghĩa — đúng lỗi nhãn mơ hồ mà ngon-ngu-ui.md cấm.
     const tip = `${h}h · ` + series.map(s =>
-      `${s.ten}: ${btrSo(s.arr ? s.arr[i] : null, le)} ${don_vi}`).join(" · ");
+      `${s.ten}: ${btrSo(s.arr ? s.arr[i] : null, le)} ${s.dv || don_vi || ""}`.trim()).join(" · ");
     let bars = "";
     series.forEach((s, si) => {
       const v = s.arr ? s.arr[i] : null;
@@ -1696,11 +1699,14 @@ function btrPanel(cfg) {
     cols += `<div class="btr-col" title="${esc(tip)}">${bars}</div>`;
   });
   const chu = series.map(s =>
-    `<span class="btr-key"><i class="btr-sw ${s.cls}"></i>${esc(s.ten)}</span>`).join("");
+    `<span class="btr-key"><i class="btr-sw ${s.cls}"></i>${esc(s.ten)}`
+    + (s.dv ? ` <em>(${esc(s.dv)})</em>` : "") + `</span>`).join("");
+  // Không ghi "cao nhất N" nữa — con số đó đã nằm ngay trên cột đỉnh (nhãn trực tiếp), lặp lại là
+  // nói hai lần một sự thật. Thay bằng THANG ĐO: nói cho người đọc chiều cao cột quy chiếu vào đâu.
   return `<div class="btr-panel">
       <div class="btr-h"><span class="btr-t">${esc(tieu_de)}</span>
         <span class="btr-legend">${chu}</span>
-        <span class="btr-u">cao nhất ${btrSo(max, le)} ${esc(don_vi)}</span></div>
+        <span class="btr-u">thang 0–${btrSo(max, le)}${don_vi ? " " + esc(don_vi) : ""}</span></div>
       <div class="btr-plot">${cols}</div>
     </div>`;
 }
@@ -1723,7 +1729,10 @@ function btrLuoi(bt) {
       // `return` chứ KHÔNG `continue`: đây là callback của forEach, không phải thân vòng lặp —
       // `continue` ở đây là LỖI CÚ PHÁP, và nó làm VỠ TOÀN BỘ app.js (cả 3 tab trắng, không chỉ
       // biểu đồ này). Cùng cách viết với btrBang() ngay dưới.
-      if (v == null) { cols += `<i class="btr-mc btr-na"></i>`; return; }
+      // ⚠️ Ô "chưa tới giờ" KHÔNG được mang lớp .btr-mc: .btr-mc khai nền xanh SAU .btr-na nên
+      // đè mất gạch chéo → ô rỗng vẽ thành CỘT XANH CAO NHẤT, đọc thành "8 giờ tối phòng nào
+      // cũng mở" (chỉ lộ ra khi CHỤP ẢNH — bài kiểm đếm số không thấy).
+      if (v == null) { cols += `<i class="btr-mna"></i>`; return; }
       const pc = v > 0 ? Math.max(4, (v / max) * 100) : 0;
       cols += `<i class="btr-mc" style="height:${pc.toFixed(1)}%"></i>`;
     });
@@ -1814,13 +1823,13 @@ function renderBoTri(bt) {
       series: [{ ten: "Phòng khám", cls: "btr-pk", arr: bt.pk.mo },
                { ten: "Phòng siêu âm", cls: "btr-sa", arr: bt.sa.mo }] })}
     ${btrPanel({
-      tieu_de: "Số người đang chờ", don_vi: "người · ca", gio: bt.gio,
-      series: [{ ten: "Chờ khám", cls: "btr-pk", arr: bt.pk.cho },
-               { ten: "Ca siêu âm chưa xong", cls: "btr-sa", arr: bt.sa.cho }] })}
+      tieu_de: "Số người đang chờ", gio: bt.gio,
+      series: [{ ten: "Chờ khám", dv: "người", cls: "btr-pk", arr: bt.pk.cho },
+               { ten: "Siêu âm chưa xong", dv: "ca", cls: "btr-sa", arr: bt.sa.cho }] })}
     ${btrPanel({
-      tieu_de: "Bình quân mỗi phòng đang mở", don_vi: "người/phòng", gio: bt.gio, le: true,
-      series: [{ ten: "Phòng khám", cls: "btr-pk", arr: bt.pk.moi_phong },
-               { ten: "Phòng siêu âm", cls: "btr-sa", arr: bt.sa.moi_phong }] })}
+      tieu_de: "Bình quân mỗi phòng đang mở", gio: bt.gio, le: true,
+      series: [{ ten: "Phòng khám", dv: "người/phòng", cls: "btr-pk", arr: bt.pk.moi_phong },
+               { ten: "Phòng siêu âm", dv: "ca/phòng", cls: "btr-sa", arr: bt.sa.moi_phong }] })}
     <div class="btr-axis">${bt.gio.map(h => `<span>${h}</span>`).join("")}</div>
     <p class="btr-axis-t">Khung giờ trong ngày</p>
     <h3 class="btr-h3">Phòng khám hoạt động theo từng khu · từng tầng</h3>

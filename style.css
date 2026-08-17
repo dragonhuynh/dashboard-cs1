@@ -1787,7 +1787,13 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   height: 30px; align-items: end; margin-top: 5px;
 }
 .btr-mc { background: var(--brand-blue-dark); border-radius: 2px 2px 0 0; min-height: 0; }
-.btr-mplot .btr-na { height: 100%; border-radius: 2px; }
+/* Ô "chưa tới giờ" của lưới nhỏ — lớp RIÊNG, khai SAU .btr-mc. Dùng chung lớp .btr-na rồi chồng
+   thêm .btr-mc thì nền xanh của .btr-mc thắng (cùng độ ưu tiên, khai sau) và ô rỗng biến thành
+   cột xanh cao nhất — tức biểu đồ khẳng định điều chưa hề xảy ra. */
+.btr-mna {
+  height: 100%; border-radius: 2px; opacity: .7;
+  background: repeating-linear-gradient(45deg, transparent 0 4px, var(--line) 4px 5px);
+}
 
 /* --- Bảng số: bắt buộc có (ĐT không rê chuột được → tooltip vô dụng) --- */
 .btr-bang { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
@@ -1812,3 +1818,4 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   .btr-cells { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
   .btr-bang > summary { min-height: 44px; }   /* vùng chạm ≥44px (Apple HIG) */
 }
+.btr-key em { font-style: normal; color: var(--gray); }
