@@ -1937,8 +1937,12 @@ function btrLuoi(bt, H) {
 //    đọc được con số, tức đúng thứ nó sinh ra để phục vụ. `.btr-bang` nay là <div>, không phải
 //    <details> ⇒ ĐỪNG thêm <summary> trở lại (style của summary đã xoá khỏi style.css).
 function btrBangKhu(bt, V, mot) {
-  const cai = [{ nhan: "Cả 3 khu", pk: V.pk, sa: V.sa, tong: true }]
-    .concat((V.khu || []).map(k => ({ nhan: k.nhan, pk: k.pk, sa: k.sa, n_sa: k.n_sa })));
+  // ⚠️ Số khu lấy TỪ DỮ LIỆU, đừng gõ cứng "Cả 3 khu": khi gộp KM+M thì `V.khu` chỉ còn 2 phần tử
+  //    trong khi vẫn là 3 tòa nhà, và gỡ `KHU_HIEN_THI` là thành 8 tòa — chữ gõ cứng sẽ nói sai.
+  const nKhu = (bt.khu || []).length || (V.khu || []).length;
+  const cai = [{ nhan: `Cả ${nKhu} khu`, pk: V.pk, sa: V.sa, tong: true }]
+    .concat((V.khu || []).map(k => ({ nhan: k.nhan, pk: k.pk, sa: k.sa, n_sa: k.n_sa,
+                                      n_khu: k.n_khu })));
   return `<div class="btr-bang">
     <h3 class="btr-h3">Bảng số theo từng khu</h3>
     ${cai.map(x => btrMotBang(bt, x, mot)).join("")}
