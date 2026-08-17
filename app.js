@@ -1662,9 +1662,22 @@ function btrSo(v, le) {
   return le ? String(v).replace(".", ",") : fmt(v);
 }
 
+// CẮT khoảng giờ CHƯA TỚI ở hai đầu. Vẽ trọn 6h–20h lúc mới 14h thì gần nửa bề ngang là ô trống,
+// cột bị ép mỏng dính — đo thật trên 1440px: bỏ đuôi rỗng làm mỗi cột rộng gần GẤP ĐÔI.
+// Vẫn giữ khoảng trống Ở GIỮA (mốc thu lỗi) vì đó là thông tin thật, khác hẳn "chưa tới giờ".
+function btrGioHien(bt) {
+  const ds = [bt.pk.mo, bt.sa.mo, bt.pk.cho, bt.sa.cho, bt.pk.xong, bt.sa.xong];
+  const co = (i) => ds.some(a => a && a[i] != null);
+  let lo = 0, hi = bt.gio.length - 1;
+  while (lo <= hi && !co(lo)) lo++;
+  while (hi >= lo && !co(hi)) hi--;
+  if (lo > hi) return { lo: 0, hi: bt.gio.length - 1, gio: bt.gio };
+  return { lo, hi, gio: bt.gio.slice(lo, hi + 1) };
+}
+
 // Một panel = một khung, một đơn vị, tối đa 2 chuỗi. `series[i].arr` cùng độ dài với `gio`.
 function btrPanel(cfg) {
-  const { tieu_de, don_vi, gio, series, le } = cfg;
+  const { tieu_de, don_vi, gio, series, le, nhan } = cfg;
   const max = btrMax(series.map(s => s.arr));
   // Đỉnh của chuỗi ĐẦU TIÊN → nhãn trực tiếp (không bắt người đọc rê chuột mới biết số cao nhất).
   const dinhIdx = series.map(s => {
@@ -1750,22 +1763,30 @@ function btrLuoi(bt) {
 // cần con số chính xác chứ không chỉ chiều cao cột (chuẩn tiếp cận: mọi biểu đồ phải có bản bảng).
 function btrBang(bt) {
   let tr = "";
-  const o = (s, i) => `<td>${btrSo(bt[s].mo[i])}</td><td>${btrSo(bt[s].cho[i])}</td>`
-    + `<td>${btrSo(bt[s].xong[i])}</td>`
-    + `<td class="btr-r">${btrSo(bt[s].moi_phong[i], true)}</td>`
-    + `<td class="btr-r">${btrSo(bt[s].nang_suat[i], true)}</td>`
-    + `<td class="btr-r">${btrSo(bt[s].giai_toa[i], true)}</td>`;
+  // NỀN 2 MÀU tách hai bên (user chốt 2026-08-17): 12 cột số liền nhau thì mắt không biết cột nào
+  // thuộc phòng khám, cột nào thuộc siêu âm. Nền dùng ĐÚNG token nhạt của 2 màu chuỗi trên biểu đồ
+  // (--brand-blue-50 ⇄ --brand-pink-50) → bảng và biểu đồ nói cùng một ngôn ngữ màu.
+  const o = (s, i) => {
+    const c = s === "pk" ? "cpk" : "csa";
+    return `<td class="${c}">${btrSo(bt[s].mo[i])}</td>`
+      + `<td class="${c}">${btrSo(bt[s].cho[i])}</td>`
+      + `<td class="${c}">${btrSo(bt[s].xong[i])}</td>`
+      + `<td class="${c} btr-r">${btrSo(bt[s].moi_phong[i], true)}</td>`
+      + `<td class="${c} btr-r">${btrSo(bt[s].nang_suat[i], true)}</td>`
+      + `<td class="${c} btr-r">${btrSo(bt[s].giai_toa[i], true)}</td>`;
+  };
   bt.gio.forEach((h, i) => {
     if (bt.pk.mo[i] == null && bt.pk.cho[i] == null) return;
     tr += `<tr><th>${h}h</th>${o("pk", i)}${o("sa", i)}</tr>`;
   });
-  const cot = `<th>Phòng mở</th><th>Đang chờ</th><th>Xong trong giờ</th>
-      <th>Chờ/phòng</th><th>Ca/phòng/giờ</th><th>Giải toả (giờ)</th>`;
+  const cot = (c) => `<th class="${c}">Phòng mở</th><th class="${c}">Đang chờ</th>
+      <th class="${c}">Xong trong giờ</th><th class="${c}">Chờ/phòng</th>
+      <th class="${c}">Ca/phòng/giờ</th><th class="${c}">Giải toả (giờ)</th>`;
   return `<details class="btr-bang"><summary>Xem bảng số</summary>
     <div class="btr-scroll"><table>
-      <thead><tr><th rowspan="2">Giờ</th><th colspan="6">Phòng khám</th>
-        <th colspan="6">Phòng siêu âm</th></tr>
-      <tr>${cot}${cot}</tr></thead>
+      <thead><tr><th rowspan="2">Giờ</th><th colspan="6" class="cpk">Phòng khám</th>
+        <th colspan="6" class="csa">Phòng siêu âm</th></tr>
+      <tr>${cot("cpk")}${cot("csa")}</tr></thead>
       <tbody>${tr}</tbody></table></div>
     <p class="btr-note">“Giải toả” = số người đang chờ ÷ tốc độ giải quyết của chính giờ đó —
       tức <b>với nhịp làm việc lúc đó thì bao lâu mới hết hàng</b>. Ô “—” là giờ chưa đo được

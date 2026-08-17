@@ -1819,3 +1819,12 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   .btr-bang > summary { min-height: 44px; }   /* vùng chạm ≥44px (Apple HIG) */
 }
 .btr-key em { font-style: normal; color: var(--gray); }
+
+/* Nền 2 màu tách phòng khám ⇄ siêu âm trong bảng số (user chốt 2026-08-17). Dùng đúng token nhạt
+   của 2 màu chuỗi trên biểu đồ → bảng và biểu đồ cùng một ngôn ngữ màu, không phát minh màu mới.
+   Tách bằng NỀN chứ không bằng chữ: 12 cột số liền nhau thì viền/đường kẻ không đủ để mắt gom nhóm. */
+.btr-bang .cpk { background: var(--brand-blue-50); }
+.btr-bang .csa { background: var(--brand-pink-50); }
+.btr-bang thead .cpk, .btr-bang thead .csa { color: var(--ink); font-weight: 700; }
+.btr-bang tbody tr:hover .cpk { background: #d8ebf8; }
+.btr-bang tbody tr:hover .csa { background: #fbdcea; }
