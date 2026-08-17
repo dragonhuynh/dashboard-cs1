@@ -1750,21 +1750,26 @@ function btrLuoi(bt) {
 // cần con số chính xác chứ không chỉ chiều cao cột (chuẩn tiếp cận: mọi biểu đồ phải có bản bảng).
 function btrBang(bt) {
   let tr = "";
+  const o = (s, i) => `<td>${btrSo(bt[s].mo[i])}</td><td>${btrSo(bt[s].cho[i])}</td>`
+    + `<td>${btrSo(bt[s].xong[i])}</td>`
+    + `<td class="btr-r">${btrSo(bt[s].moi_phong[i], true)}</td>`
+    + `<td class="btr-r">${btrSo(bt[s].nang_suat[i], true)}</td>`
+    + `<td class="btr-r">${btrSo(bt[s].giai_toa[i], true)}</td>`;
   bt.gio.forEach((h, i) => {
     if (bt.pk.mo[i] == null && bt.pk.cho[i] == null) return;
-    tr += `<tr><th>${h}h</th>
-      <td>${btrSo(bt.pk.mo[i])}</td><td>${btrSo(bt.pk.cho[i])}</td>
-      <td class="btr-r">${btrSo(bt.pk.moi_phong[i], true)}</td>
-      <td>${btrSo(bt.sa.mo[i])}</td><td>${btrSo(bt.sa.cho[i])}</td>
-      <td class="btr-r">${btrSo(bt.sa.moi_phong[i], true)}</td></tr>`;
+    tr += `<tr><th>${h}h</th>${o("pk", i)}${o("sa", i)}</tr>`;
   });
+  const cot = `<th>Phòng mở</th><th>Đang chờ</th><th>Xong trong giờ</th>
+      <th>Chờ/phòng</th><th>Ca/phòng/giờ</th><th>Giải toả (giờ)</th>`;
   return `<details class="btr-bang"><summary>Xem bảng số</summary>
     <div class="btr-scroll"><table>
-      <thead><tr><th rowspan="2">Giờ</th><th colspan="3">Phòng khám</th>
-        <th colspan="3">Phòng siêu âm</th></tr>
-      <tr><th>Phòng mở</th><th>Người chờ</th><th>Người/phòng</th>
-          <th>Phòng mở</th><th>Ca chưa xong</th><th>Ca/phòng</th></tr></thead>
-      <tbody>${tr}</tbody></table></div></details>`;
+      <thead><tr><th rowspan="2">Giờ</th><th colspan="6">Phòng khám</th>
+        <th colspan="6">Phòng siêu âm</th></tr>
+      <tr>${cot}${cot}</tr></thead>
+      <tbody>${tr}</tbody></table></div>
+    <p class="btr-note">“Giải toả” = số người đang chờ ÷ tốc độ giải quyết của chính giờ đó —
+      tức <b>với nhịp làm việc lúc đó thì bao lâu mới hết hàng</b>. Ô “—” là giờ chưa đo được
+      (chưa có mốc thu, hoặc chưa làm xong ca nào nên không chia được).</p></details>`;
 }
 
 // Nhận định — CHỈ nói điều đọc thẳng ra từ số, không suy diễn nguyên nhân (R09).
@@ -1783,6 +1788,34 @@ function btrNhanDinh(bt) {
     (o.moi_phong || []).forEach((v, i) => { if (v != null && v > bv) { bv = v; bi = i; } });
     return bi < 0 ? null : { gio: bt.gio[bi], v: bv, mo: o.mo[bi], dv };
   };
+  // THỜI GIAN GIẢI TOẢ — trả lời chữ "ùn ứ" bằng đơn vị hành động được (bao lâu mới hết hàng),
+  // thay vì bằng số người. Nêu bên TẮC LÂU HƠN trước: đó là nút thắt thật.
+  const tac = (o) => {
+    let bi = -1, bv = -Infinity;
+    (o.giai_toa || []).forEach((v, i) => { if (v != null && v > bv) { bv = v; bi = i; } });
+    return bi < 0 ? null : { gio: bt.gio[bi], v: bv };
+  };
+  const tp = tac(bt.pk), ts = tac(bt.sa);
+  if (tp && ts) {
+    const pkTac = tp.v >= ts.v;
+    const A = pkTac ? { t: "Phòng khám", x: tp } : { t: "Siêu âm", x: ts };
+    const B = pkTac ? { t: "siêu âm", x: ts } : { t: "phòng khám", x: tp };
+    b.push(`Nút thắt lâu hơn nằm ở <b>${A.t.toLowerCase()}</b> — ${btrSo(A.x.v, true)} giờ mới `
+      + `giải toả hết hàng (lúc ${A.x.gio}h), so với ${B.t} ${btrSo(B.x.v, true)} giờ `
+      + `(lúc ${B.x.gio}h).`);
+  }
+  // BỐ TRÍ KHÔNG GIAN — khu có phòng khám mà KHÔNG có phòng siêu âm. Chuỗi theo giờ không nói được
+  // điều này, mà nó lại là vế "bố trí có hợp lý không": người bệnh phải đi sang tòa khác.
+  const thieu = (bt.khu || []).filter(k => k.pk > 0 && !k.sa);
+  if (thieu.length) {
+    const co = (bt.khu || []).filter(k => k.sa > 0);
+    const nPk = thieu.reduce((s, k) => s + k.pk, 0);
+    const tong = (bt.khu || []).reduce((s, k) => s + k.pk, 0);
+    b.push(`<b>Bố trí:</b> ${thieu.map(k => `${esc(k.khu_nhan)} (${k.pk} phòng khám)`).join(" và ")}
+      không có phòng siêu âm nào — cả ${co.reduce((s, k) => s + k.sa, 0)} phòng siêu âm đều ở
+      ${co.map(k => esc(k.khu_nhan)).join(" · ")}. Tức <b>${nPk}/${tong} phòng khám</b>
+      phải gửi người bệnh sang tòa khác để siêu âm.`);
+  }
   const np = nang(bt.pk, "người"), ns = nang(bt.sa, "ca");
   if (np) b.push(`Phòng khám nặng nhất lúc <b>${np.gio}h</b>: ${btrSo(np.v, true)} người/phòng `
     + `(${np.mo} phòng mở).`);
@@ -1826,6 +1859,10 @@ function renderBoTri(bt) {
       tieu_de: "Số người đang chờ", gio: bt.gio,
       series: [{ ten: "Chờ khám", dv: "người", cls: "btr-pk", arr: bt.pk.cho },
                { ten: "Siêu âm chưa xong", dv: "ca", cls: "btr-sa", arr: bt.sa.cho }] })}
+    ${btrPanel({
+      tieu_de: "Đã giải quyết trong giờ", gio: bt.gio,
+      series: [{ ten: "Lượt khám xong", dv: "lượt", cls: "btr-pk", arr: bt.pk.xong },
+               { ten: "Ca siêu âm có kết quả", dv: "ca", cls: "btr-sa", arr: bt.sa.xong }] })}
     ${btrPanel({
       tieu_de: "Bình quân mỗi phòng đang mở", gio: bt.gio, le: true,
       series: [{ ten: "Phòng khám", dv: "người/phòng", cls: "btr-pk", arr: bt.pk.moi_phong },
