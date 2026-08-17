@@ -1918,13 +1918,23 @@ function btrLuoi(bt, H) {
       // ⚠️ Ô "chưa tới giờ" KHÔNG được mang lớp .btr-mc: .btr-mc khai nền xanh SAU .btr-na nên
       // đè mất gạch chéo → ô rỗng vẽ thành CỘT XANH CAO NHẤT, đọc thành "8 giờ tối phòng nào
       // cũng mở" (chỉ lộ ra khi CHỤP ẢNH — bài kiểm đếm số không thấy).
-      if (v == null && w == null) { cols += `<i class="btr-mna"></i>`; return; }
+      if (v == null && w == null) {
+        cols += `<i class="btr-mna" title="${h}h — chưa có số liệu"></i>`;
+        return;
+      }
       const cot = (x, cls) => {
         if (x == null) return "";
         const pc = x > 0 ? Math.max(4, (x / max) * 100) : 0;
         return `<i class="${cls}" style="height:${pc.toFixed(1)}%"></i>`;
       };
-      cols += `<span class="btr-mgio">${cot(v, "btr-mc")}${cot(w, "btr-mc-sa")}</span>`;
+      // TOOLTIP TỪNG GIỜ: ô nhỏ 30px không có nhãn trục dọc, nên nếu chỉ có tooltip ở CẢ Ô thì
+      // người đọc biết đỉnh là bao nhiêu mà không biết giờ nào cao giờ nào thấp. Ghi rõ "chưa có
+      // số" thay vì bỏ trống — trống đọc thành 0 (luật 5).
+      const soGio = (x) => (x == null ? "chưa có số" : x);
+      const tipGio = `${h}h` + (coPk ? ` · phòng khám ${soGio(v)}` : "")
+                             + (coSa ? ` · siêu âm ${soGio(w)}` : "");
+      cols += `<span class="btr-mgio" title="${esc(tipGio)}">`
+            + `${cot(v, "btr-mc")}${cot(w, "btr-mc-sa")}</span>`;
     });
     const dinh = Math.max(0, ...c.mo.filter(v => v != null));
     const dinhSa = coSa ? Math.max(0, ...c.mo_sa.filter(v => v != null)) : 0;
@@ -1933,14 +1943,28 @@ function btrLuoi(bt, H) {
               : "không có phòng khám")
       + (coSa ? ` · phòng siêu âm ${c.n_phong_sa} (cao nhất ${dinhSa} cùng hoạt động)`
               : " · không có phòng siêu âm");
+    // ⚠️ SỐ PHẢI CÓ CHỮ ĐI KÈM, đừng để mỗi màu phân biệt (WCAG 1.4.1): trước đây ô ghi "6/7  2/4"
+    //    và người đọc phải nhớ "xanh = phòng khám, hồng = siêu âm" từ dòng chú giải phía trên —
+    //    trên điện thoại không rê chuột được nên tooltip không cứu được. Nay mỗi số tự nói nó là gì.
+    // Nhãn hai đầu trục giờ: 10 cột trong ô 30px cao mà không có mốc thời gian nào thì thấy hình
+    // dạng mà không biết cao ở giờ nào. Chỉ in giờ ĐẦU và CUỐI — in đủ 10 mốc là chữ đè lên nhau.
     html += `<div class="btr-cell" title="${esc(tip)}">
-        <div class="btr-cn">${esc(c.tang || "Chưa rõ tầng")}
-          ${coPk ? `<span class="btr-cs">${dinh}/${c.n_phong}</span>` : ""}
-          ${coSa ? `<span class="btr-cs sa">${dinhSa}/${c.n_phong_sa}</span>` : ""}</div>
-        <div class="btr-mplot">${cols}</div></div>`;
+        <div class="btr-cn">${esc(c.tang || "Chưa rõ tầng")}</div>
+        <div class="btr-cso">
+          ${coPk ? `<span class="btr-cs">${dinh}/${c.n_phong}<i>khám</i></span>` : ""}
+          ${coSa ? `<span class="btr-cs sa">${dinhSa}/${c.n_phong_sa}<i>siêu âm</i></span>` : ""}
+        </div>
+        <div class="btr-mplot">${cols}</div>
+        <div class="btr-mtruc"><span>${gioH[0]}h</span><span>${gioH[gioH.length - 1]}h</span></div>
+      </div>`;
   });
+  // NÓI RA THANG ĐO. Chú giải cũ chỉ ghi "dùng chung một thang đo" mà không cho biết thang đó là
+  // bao nhiêu ⇒ so được ô này với ô kia nhưng KHÔNG đọc được giá trị của bất kỳ cột nào. Một con số
+  // là đủ: cột chạm nóc = bao nhiêu phòng.
   // Đóng nốt .btr-cells + .btr-khu của khu CUỐI, rồi mới đóng .btr-grid — đủ 3 thẻ, cân bằng.
-  return `<div class="btr-grid">${html}${khuTruoc !== null ? "</div></div>" : ""}</div>`;
+  return `<p class="btr-thang">Cột chạm nóc ô = <b>${max} phòng</b> — mọi ô dùng chung thang đo này,
+      nên so được tầng này với tầng kia.</p>
+    <div class="btr-grid">${html}${khuTruoc !== null ? "</div></div>" : ""}</div>`;
 }
 
 // Bảng số — BẮT BUỘC có: trên điện thoại không rê chuột được nên tooltip vô dụng, và người đọc
@@ -2179,10 +2203,9 @@ function renderBoTri(bt) {
       <span class="btr-legend">
         <span class="btr-key"><i class="btr-sw btr-pk"></i>Phòng khám</span>
         <span class="btr-key"><i class="btr-sw btr-sa"></i>Phòng siêu âm</span></span></h3>
-    <p class="btr-note">Mỗi ô là một tầng, dùng chung một thang đo nên so được tầng này với tầng
-      kia. Số bên phải tên tầng = <b>số phòng cùng hoạt động lúc cao nhất / tổng số phòng</b>
-      (xanh = phòng khám, hồng = phòng siêu âm). Thiếu số nào là tầng đó <b>không có loại phòng
-      đó</b> — ví dụ Khu KM tầng 2 và tầng 3 chỉ có phòng siêu âm, không có phòng khám.</p>
+    <p class="btr-note">Mỗi ô là một tầng. Số trên ô = <b>số phòng cùng hoạt động lúc cao nhất /
+      tổng số phòng</b> của tầng đó; thiếu dòng nào là tầng đó không có loại phòng đó
+      (Khu KM tầng 2·3 chỉ có phòng siêu âm).</p>
     ${btrLuoi(V, H)}
     ${btrBangKhu(bt, V, mot)}`;
 }

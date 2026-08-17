@@ -1787,14 +1787,25 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   font-size: 12px; font-weight: 700; color: var(--brand-blue-dark); margin: 0 0 6px;
   text-transform: uppercase; letter-spacing: .3px;
 }
-.btr-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+/* ⚠️ 190px chứ không 150px: ô có CẢ HAI chuỗi (Khu N) vẽ 10 giờ × 2 cột = 20 cột trong một ô —
+   ở 150px mỗi cột còn ~5px, nhìn ra vệt sọc chứ không ra biểu đồ. 190px cho cột ~7,5px và desktop
+   1440px vẫn xếp được 6 ô/hàng. */
+.btr-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .btr-cell { border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px 6px; background: #fff; }
 .btr-cn { font-size: 11.5px; font-weight: 600; color: var(--ink); display: flex; gap: 6px; }
-.btr-cs { margin-left: auto; color: var(--muted); font-weight: 700; }
+/* Hàng số RIÊNG dưới tên tầng (trước đây nhồi cùng dòng với tên): tên tầng dài + 2 con số + 2 chữ
+   đi kèm không đủ chỗ trên một dòng, và khi vỡ dòng thì số rơi lung tung giữa các ô. */
+.btr-cso { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 1px; }
+.btr-cs { color: var(--muted); font-weight: 700; font-size: 11.5px; }
+.btr-cs i { font-style: normal; font-weight: 500; font-size: 9.5px; color: var(--muted);
+  margin-left: 3px; }
 .btr-mplot {
   display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px;
-  height: 30px; align-items: end; margin-top: 5px;
+  height: 34px; align-items: end; margin-top: 5px;
 }
+/* Nhãn hai đầu trục giờ — mốc thời gian tối thiểu để biết cột nào là giờ nào. */
+.btr-mtruc { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--muted);
+  margin-top: 2px; line-height: 1; }
 .btr-mc { background: var(--brand-blue-dark); border-radius: 2px 2px 0 0; min-height: 0; }
 /* Ô "chưa tới giờ" của lưới nhỏ — lớp RIÊNG, khai SAU .btr-mc. Dùng chung lớp .btr-na rồi chồng
    thêm .btr-mc thì nền xanh của .btr-mc thắng (cùng độ ưu tiên, khai sau) và ô rỗng biến thành
@@ -1840,7 +1851,11 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   .btr-b { max-width: 9px; }
   .btr-dinh { font-size: 9px; }
   .btr-axis span { font-size: 9.5px; }
-  .btr-cells { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+  /* ⚠️ MỘT CỘT trên ĐT, đừng nhồi 2 ô/hàng: ở 390px thì 2 ô làm mỗi ô còn ~165px, và ô có cả hai
+     chuỗi (Khu N) phải nhét 20 cột vào đó → mỗi cột ~3px, đọc không ra gì. Một cột thì ô rộng
+     ~350px, cột dày ~15px. Giá phải trả là tab dài thêm, đã đo và ghi ở phần nghiệm thu. */
+  .btr-cells { grid-template-columns: 1fr; gap: 8px; }
+  .btr-mplot { height: 40px; }
 }
 /* Đơn vị trong chú giải ("(người/phòng)") — cùng lý do với .btr-y: chữ 11,5px thì --gray (2,59:1)
    hụt ngưỡng 4,5:1 của WCAG 1.4.3. Dùng --muted (4,76:1). */
@@ -1949,5 +1964,8 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 .btr-mc-sa { background: var(--brand-pink); border-radius: 2px 2px 0 0; flex: 1 1 0; min-width: 0; }
 .btr-mgio .btr-mc { flex: 1 1 0; min-width: 0; }
 .btr-cs.sa { color: var(--brand-pink-dark); margin-left: 0; }
+.btr-cs.sa i { color: var(--brand-pink-dark); }
 .btr-cn { align-items: baseline; }
+/* Thang đo dùng chung — đặt ngay trên lưới, sát nơi dùng. */
+.btr-thang { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; }
 .btr-h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
