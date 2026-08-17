@@ -914,6 +914,16 @@ function dvNhan(ten, tenPhong) {
 // CHIP: MỌI loại còn đang chờ của phòng — KHÔNG chặn top-N, không "+N loại nữa" (user chốt: đủ
 // thông tin, không cắt bớt). Đo thật từ BC01: 1 phòng siêu âm chạy trung vị 5 loại/ngày, nên hàng
 // đợi tại một mốc chỉ vài loại → hiện hết vẫn gọn. Xếp theo số ca giảm dần (export đã xếp sẵn).
+//
+// GẬP ĐƯỢC, giống khối người thực hiện (user chốt 2026-08-17: "phân loại kỹ thuật trong phòng Siêu
+// âm cũng có nút thu gọn giống bác sĩ"). Vì sao đúng: chip chiếm TRỌN bề ngang cột thẻ (tên kỹ
+// thuật dài trung vị 53 ký tự) nên 3 loại đã ngốn ~150px và ĐẨY dòng người thực hiện xuống dưới —
+// mỗi thẻ hoá thành một bài đọc, trong khi đây là thông tin TRA CỨU, không phải thứ quét bằng mắt.
+//  • dòng tóm tắt phải nói SỐ LIỆU MỚI, không chỉ là nhãn: số LOẠI đang chờ (thông tin cơ cấu —
+//    1 loại 12 ca khác hẳn 6 loại mỗi loại 2 ca) · 1 loại thì nói luôn tên, khỏi bắt bấm.
+//  • tooltip liệt kê ĐỦ mọi loại kèm số ca ⇒ gập lại KHÔNG mất thông tin, chỉ thôi chiếm chỗ.
+// ⚠️ KHOÁ NHỚ-ĐANG-MỞ phải khác khoá của khối bác sĩ (`dv:` + key): hai <details> cùng thẻ mà chung
+// một khoá thì mở cái này, lần tự nạp lại sau (5′) sẽ mở nhầm cả cái kia.
 function svcWaitChips(r) {
   const ds = (r.dv || []).filter(d => (d.ton || 0) > 0);
   if (!ds.length) return "";
@@ -924,8 +934,16 @@ function svcWaitChips(r) {
     return `<span class="dv-chip" title="${esc(tip)}"><b>${fmt(d.ton)}</b> ca · ${esc(nh.chinh)}`
       + (nh.phu ? `<i>${esc(nh.phu)}</i>` : "") + `</span>`;
   }).join("");
-  return `<div class="dv-wrap"><div class="dv-h">Đang chờ theo loại kỹ thuật</div>
-    <div class="dv-chips">${chips}</div></div>`;
+  const inner = ds.length === 1
+    ? `<b>${fmt(ds[0].ton)} ca</b> · ${esc(dvNhan(ds[0].ten, r.name).chinh)}`
+    : `<b>${ds.length} loại kỹ thuật</b> đang chờ`;
+  const tip = `Đang chờ tại ${r.name}:\n`
+    + ds.map(d => `• ${fmt(d.ton)} ca — ${d.ten}`).join("\n")
+    + "\n(bấm để xem đủ, có cả phụ chú của HIS)";
+  const k = "dv:" + r.key;
+  return `<details class="bs-det dv-det" data-bs="${esc(k)}"${_bsMo.has(k) ? " open" : ""}>
+    <summary class="dv-sum" title="${esc(tip)}"><span class="dv-sum-t">${inner}</span></summary>
+    <div class="bs-body"><div class="dv-chips">${chips}</div></div></details>`;
 }
 
 // Bản DÒNG CHỮ của khối trên — dùng cho dòng gọn (38 phòng), nơi chip quá tốn chỗ.

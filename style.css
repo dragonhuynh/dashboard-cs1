@@ -1648,6 +1648,25 @@ body.tv .room .wait .over { font-size: 17px; vertical-align: 10px; }
 .room .bs-det[open] > summary.room-doc { border-radius: 8px 8px 0 0; }
 .room .bs-det .bs-body { padding-top: 2px; }
 
+/* ---- Khối "ĐANG CHỜ THEO LOẠI KỸ THUẬT" trên thẻ CĐHA: gập được (user chốt 2026-08-17) ----
+   Cùng cơ chế <details> với khối người thực hiện ngay dưới nó, nên thừa hưởng caret ▾, viền focus
+   bàn phím và luật nhớ-đang-mở của `.bs-det`. Kiểu dáng CỐ Ý khác dòng người thực hiện (viền +
+   nền trắng nhạt, chữ xanh thương hiệu): hai nút gập nằm sát nhau trên cùng một thẻ mà trông y
+   hệt thì mắt không biết mình sắp mở cái nào. */
+.room .dv-det { margin-top: 8px; }
+.room .dv-det > summary.dv-sum { display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 700; color: var(--brand-blue-dark);
+  background: rgba(255,255,255,.62); border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 10px; min-height: 36px; }
+.room .dv-det > summary.dv-sum:hover { background: rgba(255,255,255,.95); }
+.room .dv-det[open] > summary.dv-sum { border-radius: 8px 8px 0 0; }
+/* Chữ phải là MỘT flex item, nếu không `<b>3 loại kỹ thuật</b>` tách khỏi "đang chờ" thành 2 cột
+   hẹp và vỡ dòng — đúng bẫy đã trị ở `.rd-who` của dòng bác sĩ. */
+.room .dv-det .dv-sum-t { flex: 1 1 auto; min-width: 0; }
+.room .dv-det .bs-body { padding-top: 6px; }
+/* Vùng chạm ngón tay ≥44px (Apple HIG) — trên điện thoại thẻ nào cũng có nút này. */
+@media (max-width: 720px) { .room .dv-det > summary.dv-sum { min-height: 44px; } }
+
 /* ---- Trên DÒNG GỌN: cả dòng phòng là <summary> ---- */
 .calm-list .bs-det > summary.room-calm { min-height: 40px; }
 .calm-list .bs-det > summary.room-calm .rc-name { flex: 1 1 auto; min-width: 0; }
