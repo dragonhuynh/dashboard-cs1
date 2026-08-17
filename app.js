@@ -1707,12 +1707,27 @@ function btrGop(bt, ngays) {
     for (let i = 0; i < N; i++) out.push(btrTrungVi(ls.map(x => btrTach(lay(x))[i])));
     return out;
   };
-  const ty = (a, b, lam_tron) => a.map((v, i) => (v == null || !b[i]) ? null
+  const ty = (a, b) => a.map((v, i) => (v == null || !b[i]) ? null
     : Math.round((v / b[i]) * 10) / 10);
+  // ⚠️ GIỜ ĐUÔI NGÀY LÀM PHÉP CHIA NỔ TUNG — đã dính thật: 19h còn 129 người chờ mà chỉ giải quyết
+  // được 1 ca ⇒ "129 giờ mới giải toả"; 18h còn 3,5 phòng mở ⇒ "37,6 người/phòng". Cả hai đúng về
+  // số học nhưng SAI về nghĩa: lúc đó phòng khám đang đóng cửa, hàng còn lại chuyển sang hôm sau
+  // chứ không phải đang được giải quyết với nhịp đó. Chỉ tính tỷ số ở GIỜ HOẠT ĐỘNG CHÍNH —
+  // giờ mà số phòng mở đạt ≥25% mức cao nhất của chính bên đó trong ngày.
+  const chinh = (mo) => {
+    const mx = Math.max(...mo.filter(v => v != null), 0);
+    return mo.map(v => v != null && mx > 0 && v >= mx * 0.25);
+  };
+  const loc = (arr, ok) => arr.map((v, i) => ok[i] ? v : null);
   const ben = (k) => {
     const mo = gop(x => x[k].mo), cho = gop(x => x[k].cho), xong = gop(x => x[k].xong);
-    return { mo, cho, xong, moi_phong: ty(cho, mo), nang_suat: ty(xong, mo),
-             giai_toa: ty(cho, xong) };
+    const ok = chinh(mo);
+    return { mo, cho, xong, gio_chinh: ok,
+             // `moi_phong` giữ NGUYÊN mọi giờ (nó là sự thật quan sát được, không phải suy ra tốc
+             // độ); chỉ 2 tỷ số dựa trên NHỊP LÀM VIỆC mới phải giới hạn ở giờ hoạt động chính.
+             moi_phong: ty(cho, mo),
+             nang_suat: loc(ty(xong, mo), ok),
+             giai_toa: loc(ty(cho, xong), ok) };
   };
   const cum = (bt.pk.cum || []).map((cm, j) => ({ ...cm, mo: gop(x => (x.cum || [])[j]) }));
   // `gio` đi kèm để V tự đủ dùng — btrGioHien()/btrBang() nhận V, không được buộc phải cầm thêm
@@ -1888,8 +1903,10 @@ function btrNhanDinh(bt, V) {
       : `Đỉnh phòng khám <b>${dp}h</b>, đỉnh siêu âm <b>${ds}h</b> — <b>lệch ${Math.abs(lech)} giờ</b>.`);
   }
   // Giờ nặng nhất theo TỶ SỐ (người trên mỗi phòng đang mở) — đó mới là mức chịu tải thật.
+  // ⚠️ CHỈ xét GIỜ HOẠT ĐỘNG CHÍNH: cuối buổi còn 3,5 phòng mở với 129 người chờ ra "37,6
+  // người/phòng" và cướp mất đỉnh thật lúc 8h — xem ghi chú ở btrGop().
   const nang = (o) => {
-    const i = dinhCua(o.moi_phong);
+    const i = dinhCua(o.moi_phong.map((v, j) => o.gio_chinh[j] ? v : null));
     return i < 0 ? null : { gio: bt.gio[i], v: o.moi_phong[i], mo: o.mo[i] };
   };
   // THỜI GIAN GIẢI TOẢ — trả lời chữ "ùn ứ" bằng đơn vị hành động được (bao lâu mới hết hàng),
@@ -3240,11 +3257,13 @@ if (_btnPrint) _btnPrint.addEventListener("click", () => window.print());
   if (lo && location.protocol === "file:") lo.style.display = "none";
 })();
 
-// Nút gập/mở 2 khối phân tích của tab CĐHA (câu hỏi phân tích → không hiện mặc định, §12.5).
+// Nút gập/mở khối phân tích của tab CĐHA (câu hỏi phân tích → không hiện mặc định, §12.5).
 // ⚠️ Mỗi khối một KHOÁ NHỚ RIÊNG: dùng chung khoá thì mở khối này, lần tự nạp lại sau (5') bung
 //    nhầm cả khối kia (đúng bẫy đã ghi ở §12.10 với 2 <details> trong cùng một thẻ).
-[["cls-svc-toggle", "cls-svc", "cls_svc_open"],
- ["cls-botri-toggle", "cls-botri", "cls_botri_open"]].forEach(([bId, sId, KEY]) => {
+// ⚠️ "Bố trí phòng theo khung giờ" đã RA KHỎI danh sách này (user chốt 2026-08-18: luôn mở, không
+//    có nút đóng). Giữ vòng lặp dạng danh sách để thêm khối gập mới không phải viết lại; đừng thêm
+//    `cls-botri-toggle` trở lại — phần tử đó không còn tồn tại trong index.html.
+[["cls-svc-toggle", "cls-svc", "cls_svc_open"]].forEach(([bId, sId, KEY]) => {
   const btn = document.getElementById(bId);
   const sec = document.getElementById(sId);
   if (!btn || !sec) return;

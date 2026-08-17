@@ -1725,6 +1725,15 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
       đó là điều kiện để đọc được small multiples; lệch cột là so sai giờ.
    ============================================================================ */
 #cls-botri { padding: 12px 14px 14px; }
+/* Tiêu đề khối — LUÔN MỞ, không nút gập (user chốt 2026-08-18). Thay cho `.big-toggle` cũ, nên phải
+   tự dựng lại vai trò "vạch ngăn khối": trước đây cái thẻ nút trắng có viền làm nhiệm vụ đó, bỏ nút
+   mà không có gì thay thì biểu đồ dính liền vào danh sách phòng ở trên, đọc thành một khối.
+   ⚠️ padding NGANG phải bằng `#cls-botri` (14px · ĐT 10px) — tiêu đề nằm NGOÀI section (renderBoTri
+      ghi đè `innerHTML` của section nên đặt vào trong là bị xoá mỗi vòng), lệch padding là chữ
+      tiêu đề không thẳng cột với nội dung ngay dưới nó. */
+.btr-title { margin: 26px 0 0; padding: 16px 14px 0; border-top: 2px solid var(--line);
+  font-size: 16px; font-weight: 800; color: var(--ink); }
+.btr-sub { display: block; margin-top: 3px; font-size: 12.5px; font-weight: 500; color: var(--muted); }
 .btr-lead { margin-bottom: 12px; }
 .btr-dn { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0 0 8px; }
 .btr-canh { color: var(--amber); font-weight: 600; }
@@ -1810,6 +1819,7 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 
 @media (max-width: 720px) {
   #cls-botri { padding: 10px 10px 12px; }
+  .btr-title { padding: 14px 10px 0; margin-top: 20px; font-size: 15px; }
   .btr-plot { height: 72px; gap: 2px; }
   .btr-plot, .btr-axis { gap: 2px; }
   .btr-b { max-width: 9px; }

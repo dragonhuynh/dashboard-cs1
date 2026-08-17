@@ -92,13 +92,18 @@
 
     <!-- KHỐI 2 — BỐ TRÍ PHÒNG THEO KHUNG GIỜ (user chốt 2026-08-17): cung (phòng có bác sĩ làm
          việc) ⇄ cầu (người đang chờ) theo từng giờ, để xem việc mở phòng khám ⇄ phòng siêu âm có
-         tương thích không. GẬP MẶC ĐỊNH — câu hỏi PHÂN TÍCH, không phải việc phải làm ngay (§12.5).
+         tương thích không.
+         ⚠️ LUÔN MỞ, KHÔNG có nút gập (user chốt 2026-08-18). Trước đây là `.big-toggle` gập mặc
+            định; bỏ nút vì khối này nằm SAU danh sách phòng nên không chiếm chỗ của việc cần làm,
+            mà gập lại thì phải bấm mới thấy — đúng lý do đã bỏ nút "Ẩn/Hiện N phòng còn lại" (§5b).
+            ⇒ Tiêu đề là <h2> tĩnh, KHÔNG phải <button>; `#cls-botri` KHÔNG mang `hidden`.
+         ⚠️ Dòng phụ giữ id `cls-botri-sub` (renderBoTri ghi vào đây) nhưng dùng tiền tố .btr- :
+            .bt-sub chỉ có kiểu dáng khi nằm TRONG .big-toggle (xem ghi chú đầu khối .btr- ở style.css).
          ⚠️ KHÔNG dùng trục kép: mỗi panel chỉ chứa các chuỗi CÙNG ĐƠN VỊ (xem renderBoTri). -->
-    <button type="button" id="cls-botri-toggle" class="big-toggle" aria-expanded="false">
-      <span class="caret">▸</span> Bố trí phòng theo khung giờ
-      <span class="bt-sub" id="cls-botri-sub">phòng khám ⇄ phòng siêu âm</span>
-    </button>
-    <section class="cls-wrap" id="cls-botri" hidden></section>
+    <h2 class="btr-title">Bố trí phòng theo khung giờ
+      <span class="btr-sub" id="cls-botri-sub">phòng khám ⇄ phòng siêu âm</span>
+    </h2>
+    <section class="cls-wrap" id="cls-botri"></section>
 
     <!-- KHỐI 3 — theo dịch vụ. GẬP MẶC ĐỊNH: đây là câu hỏi PHÂN TÍCH ("kỹ thuật nào ùn"),
          không phải việc cần làm ngay → không được chiếm chỗ của danh sách việc. -->
