@@ -1819,10 +1819,16 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
    giờ trôi mất thì không biết đang đọc hàng nào — con số mất nghĩa.
    ⚠️ Nền phải ĐẶC và đúng màu nền trang: đo thật, phía sau bảng là #f1f5f9 (body, style.css:14),
       KHÔNG phải #fff — tô trắng là hiện một vệt trắng lạ chạy dọc bảng. Ô này không mang lớp
-      .cpk/.csa nên tự nó trong suốt, chữ các cột sẽ chạy xuyên qua nếu không tô. */
-.btr-bang th:first-child { position: sticky; left: 0; z-index: 2; background: #f1f5f9;
-  border-right: 1px solid var(--line); }
-.btr-bang thead th:first-child { z-index: 3; }
+      .cpk/.csa nên tự nó trong suốt, chữ các cột sẽ chạy xuyên qua nếu không tô.
+   ⚠️ CHỈ ô "Giờ" của hàng tiêu đề THỨ NHẤT + ô giờ trong tbody. Viết `th:first-child` trơn là ghim
+      luôn ô đầu của HÀNG TIÊU ĐỀ THỨ HAI ("Phòng mở" của nửa phòng khám) → hai ô dính chồng bên
+      trái, tiêu đề lệch cột với thân bảng. Chỉ lộ ra khi CHỤP ẢNH lúc đang kéo ngang (luật 8). */
+.btr-bang tbody th:first-child,
+.btr-bang thead tr:first-child th:first-child {
+  position: sticky; left: 0; z-index: 2; background: #f1f5f9;
+  border-right: 1px solid var(--line);
+}
+.btr-bang thead tr:first-child th:first-child { z-index: 3; }
 /* Dấu hiệu "kéo ngang" — CHỈ ở ĐT (desktop bảng vừa khít, in ra là nhiễu). */
 .btr-keo { display: none; }
 
@@ -1836,7 +1842,9 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   .btr-axis span { font-size: 9.5px; }
   .btr-cells { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
 }
-.btr-key em { font-style: normal; color: var(--gray); }
+/* Đơn vị trong chú giải ("(người/phòng)") — cùng lý do với .btr-y: chữ 11,5px thì --gray (2,59:1)
+   hụt ngưỡng 4,5:1 của WCAG 1.4.3. Dùng --muted (4,76:1). */
+.btr-key em { font-style: normal; color: var(--muted); }
 
 /* Nền 2 màu tách phòng khám ⇄ siêu âm trong bảng số (user chốt 2026-08-17). Dùng đúng token nhạt
    của 2 màu chuỗi trên biểu đồ → bảng và biểu đồ cùng một ngôn ngữ màu, không phát minh màu mới.
