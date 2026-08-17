@@ -1761,9 +1761,14 @@ function btrGop(bt, ngays) {
              giai_toa: loc(ty(cho, xong), ok) };
   };
   const ben = (k) => benTu(x => x[k]);
-  // TỪNG KHU MỘT BẢNG (user chốt). Danh sách khu lấy từ chính dữ liệu, giữ thứ tự scraper xuất ra
-  // (= thứ tự đi thực địa TOA_NHA_ORDER) — đừng sắp lại theo mức nặng, khối sẽ đảo chỗ mỗi vòng.
-  const tenKhu = Object.keys((ls[0] && ls[0].khu) || {});
+  // TỪNG KHU MỘT BẢNG (user chốt). Đừng sắp theo mức nặng — khối sẽ đảo chỗ mỗi vòng lấy số.
+  // ⚠️ Thứ tự KHOÁ của `x.khu` KHÔNG phải thứ tự đi thực địa: nó là thứ tự scraper GẶP PHÒNG khi
+  //    quét (đo thật 2026-08-17: ra "Nhà N · Nhà M · Nhà KM" trong khi đường đi là KM → M → N).
+  //    Phải sắp lại theo `bt.khu` — mảng ĐÓ mới do scraper xuất theo TOA_NHA_ORDER. Khu lạ không có
+  //    trong `bt.khu` xuống chót (đừng để `indexOf` trả −1 rồi nhảy lên đầu).
+  const thuTu = (bt.khu || []).map(z => z.khu);
+  const viTri = (k) => (thuTu.indexOf(k) < 0 ? 99 : thuTu.indexOf(k));
+  const tenKhu = Object.keys((ls[0] && ls[0].khu) || {}).sort((a, b) => viTri(a) - viTri(b));
   const timKhu = (k) => (bt.khu || []).find(z => z.khu === k) || {};
   const motKhu = (ks) => ({
     ten: ks.join(" + "),
