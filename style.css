@@ -1790,23 +1790,30 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 /* ⚠️ 190px chứ không 150px: ô có CẢ HAI chuỗi (Khu N) vẽ 10 giờ × 2 cột = 20 cột trong một ô —
    ở 150px mỗi cột còn ~5px, nhìn ra vệt sọc chứ không ra biểu đồ. 190px cho cột ~7,5px và desktop
    1440px vẫn xếp được 6 ô/hàng. */
-.btr-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
-.btr-cell { border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px 6px; background: #fff; }
-.btr-cn { font-size: 11.5px; font-weight: 600; color: var(--ink); display: flex; gap: 6px; }
+.btr-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.btr-cell { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px 8px; background: #fff; }
+.btr-cn { font-size: 13px; font-weight: 600; color: var(--ink); display: flex; gap: 6px; }
 /* Hàng số RIÊNG dưới tên tầng (trước đây nhồi cùng dòng với tên): tên tầng dài + 2 con số + 2 chữ
    đi kèm không đủ chỗ trên một dòng, và khi vỡ dòng thì số rơi lung tung giữa các ô. */
-.btr-cso { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 1px; }
-.btr-cs { color: var(--muted); font-weight: 700; font-size: 11.5px; }
-.btr-cs i { font-style: normal; font-weight: 500; font-size: 9.5px; color: var(--muted);
+.btr-cso { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 2px; }
+.btr-cs { color: var(--muted); font-weight: 700; font-size: 13px; }
+.btr-cs i { font-style: normal; font-weight: 500; font-size: 10.5px; color: var(--muted);
   margin-left: 3px; }
+/* ⚠️ CAO 68px, KHÔNG 34px (user báo 2026-08-17: "biểu đồ cần to rõ hơn, kích thước quá nhỏ").
+   34px là chiều cao của một dòng chữ: đủ để thấy CÓ cột, không đủ để đọc HÌNH DẠNG trong ngày —
+   mà hình dạng chính là thứ lưới small-multiples sinh ra để so. Kèm LƯỚI NGANG ở giữa (như
+   `.btr-plot` của 3 biểu đồ lớn): cột cao gấp đôi mà không có mốc nào thì mắt vẫn phải ước lượng. */
 .btr-mplot {
-  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px;
-  height: 34px; align-items: end; margin-top: 5px;
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px;
+  height: 68px; align-items: end; margin-top: 7px;
+  background-image: repeating-linear-gradient(to top,
+    var(--line) 0 1px, transparent 1px 50%);
+  background-position: bottom;
 }
 /* Nhãn hai đầu trục giờ — mốc thời gian tối thiểu để biết cột nào là giờ nào. */
-.btr-mtruc { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--muted);
-  margin-top: 2px; line-height: 1; }
-.btr-mc { background: var(--brand-blue-dark); border-radius: 2px 2px 0 0; min-height: 0; }
+.btr-mtruc { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted);
+  margin-top: 3px; line-height: 1; }
+.btr-mc { background: var(--brand-blue-dark); border-radius: 3px 3px 0 0; min-height: 0; }
 /* Ô "chưa tới giờ" của lưới nhỏ — lớp RIÊNG, khai SAU .btr-mc. Dùng chung lớp .btr-na rồi chồng
    thêm .btr-mc thì nền xanh của .btr-mc thắng (cùng độ ưu tiên, khai sau) và ô rỗng biến thành
    cột xanh cao nhất — tức biểu đồ khẳng định điều chưa hề xảy ra. */
@@ -1854,8 +1861,8 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   /* ⚠️ MỘT CỘT trên ĐT, đừng nhồi 2 ô/hàng: ở 390px thì 2 ô làm mỗi ô còn ~165px, và ô có cả hai
      chuỗi (Khu N) phải nhét 20 cột vào đó → mỗi cột ~3px, đọc không ra gì. Một cột thì ô rộng
      ~350px, cột dày ~15px. Giá phải trả là tab dài thêm, đã đo và ghi ở phần nghiệm thu. */
-  .btr-cells { grid-template-columns: 1fr; gap: 8px; }
-  .btr-mplot { height: 40px; }
+  .btr-cells { grid-template-columns: 1fr; gap: 10px; }
+  .btr-mplot { height: 84px; }   /* ô rộng 370px thì cột cao 84px mới cân, 40px trông dẹt */
 }
 /* Đơn vị trong chú giải ("(người/phòng)") — cùng lý do với .btr-y: chữ 11,5px thì --gray (2,59:1)
    hụt ngưỡng 4,5:1 của WCAG 1.4.3. Dùng --muted (4,76:1). */
@@ -1960,8 +1967,8 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 
 /* Lưới khu·tầng: MỖI GIỜ MỘT CẶP CỘT — xanh = phòng khám, hồng = phòng siêu âm
    (user chốt 2026-08-17: "cần phòng siêu âm màu hồng nữa"). */
-.btr-mgio { display: flex; align-items: flex-end; justify-content: center; gap: 1px; height: 100%; }
-.btr-mc-sa { background: var(--brand-pink); border-radius: 2px 2px 0 0; flex: 1 1 0; min-width: 0; }
+.btr-mgio { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; }
+.btr-mc-sa { background: var(--brand-pink); border-radius: 3px 3px 0 0; flex: 1 1 0; min-width: 0; }
 .btr-mgio .btr-mc { flex: 1 1 0; min-width: 0; }
 .btr-cs.sa { color: var(--brand-pink-dark); margin-left: 0; }
 .btr-cs.sa i { color: var(--brand-pink-dark); }
