@@ -1651,6 +1651,74 @@ function renderClsRooms(cls) {
 //    RAG (đỏ/cam/xanh lá) làm màu chuỗi: chúng dành riêng cho mức cảnh báo (brand-kit §5).
 const BTR_DV = { phong: "phòng", nguoi: "người", ca: "ca" };
 
+// ====== CHỌN THỜI GIAN: hôm nay · khoảng ngày · tháng (user chốt 2026-08-17) ======
+// "dò lại ngày phải có THỨ để coi quy luật" → mọi chỗ hiện ngày đều kèm thứ trong tuần.
+const BTR_THU = { 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN" };
+const BTR_THU_DAI = { 1: "Thứ 2", 2: "Thứ 3", 3: "Thứ 4", 4: "Thứ 5", 5: "Thứ 6",
+                      6: "Thứ 7", 7: "Chủ nhật" };
+let _btrChon = null;      // {loai:'hom_nay'|'7ngay'|'thang'|'tu_chon', tu, den}
+
+function btrDocChon() {
+  if (_btrChon) return _btrChon;
+  try { _btrChon = JSON.parse(localStorage.getItem("btr_chon") || "null"); } catch (e) {}
+  return (_btrChon = _btrChon || { loai: "hom_nay" });
+}
+function btrLuuChon(x) {
+  _btrChon = x;
+  try { localStorage.setItem("btr_chon", JSON.stringify(x)); } catch (e) {}
+}
+
+// Chuỗi nén "24,65,,," → [24,65,null,null] (xem _nen() bên scraper). Rỗng = KHÔNG ĐO ĐƯỢC,
+// tuyệt đối không quy về 0.
+function btrTach(s) {
+  if (Array.isArray(s)) return s;
+  return String(s == null ? "" : s).split(",").map(x => x === "" ? null : Number(x));
+}
+
+// TRUNG VỊ (không phải trung bình): một ngày lỗi mốc hoặc một ngày lễ vắng bất thường sẽ kéo
+// trung bình đi, còn trung vị thì không. Bỏ qua giờ không đo được của từng ngày.
+function btrTrungVi(vals) {
+  const v = vals.filter(x => x != null && !isNaN(x)).sort((a, b) => a - b);
+  if (!v.length) return null;
+  const m = v.length >> 1;
+  return v.length % 2 ? v[m] : Math.round(((v[m - 1] + v[m]) / 2) * 10) / 10;
+}
+
+function btrNgayChon(bt) {
+  const ls = bt.lich_su || [];
+  if (!ls.length) return [];
+  const ch = btrDocChon();
+  const het = ls.map(x => x.ngay);
+  const cuoi = het[het.length - 1];
+  if (ch.loai === "hom_nay") return [cuoi];
+  if (ch.loai === "7ngay") return het.slice(-7);
+  if (ch.loai === "thang") return het.filter(d => d.slice(0, 7) === cuoi.slice(0, 7));
+  const tu = ch.tu || het[0], den = ch.den || cuoi;
+  return het.filter(d => d >= tu && d <= den);
+}
+
+// Gộp nhiều ngày → MỘT hồ sơ ngày điển hình. Tỷ số tính TỪ TRUNG VỊ (chứ không lấy trung vị của
+// các tỷ số): giữ đúng quan hệ "người chờ ÷ phòng mở" của con số đang hiển thị ngay bên trên.
+function btrGop(bt, ngays) {
+  const ls = (bt.lich_su || []).filter(x => ngays.includes(x.ngay));
+  const N = bt.gio.length;
+  const gop = (lay) => {
+    const out = [];
+    for (let i = 0; i < N; i++) out.push(btrTrungVi(ls.map(x => btrTach(lay(x))[i])));
+    return out;
+  };
+  const ty = (a, b, lam_tron) => a.map((v, i) => (v == null || !b[i]) ? null
+    : Math.round((v / b[i]) * 10) / 10);
+  const ben = (k) => {
+    const mo = gop(x => x[k].mo), cho = gop(x => x[k].cho), xong = gop(x => x[k].xong);
+    return { mo, cho, xong, moi_phong: ty(cho, mo), nang_suat: ty(xong, mo),
+             giai_toa: ty(cho, xong) };
+  };
+  const cum = (bt.pk.cum || []).map((cm, j) => ({ ...cm, mo: gop(x => (x.cum || [])[j]) }));
+  return { pk: { ...ben("pk"), cum }, sa: ben("sa"), n_ngay: ls.length,
+           ngays: ls.map(x => ({ ngay: x.ngay, thu: x.thu })) };
+}
+
 function btrMax(arrs) {
   let m = 0;
   arrs.forEach(a => (a || []).forEach(v => { if (v != null && v > m) m = v; }));
@@ -1799,9 +1867,18 @@ function btrBang(bt) {
 }
 
 // Nhận định — CHỈ nói điều đọc thẳng ra từ số, không suy diễn nguyên nhân (R09).
-function btrNhanDinh(bt) {
+// ⚠️ Tính đỉnh TỪ CHÍNH MẢNG ĐANG VẼ (`V`), không đọc `bt.dinh` do scraper tính sẵn: khi người
+// dùng chọn khoảng ngày thì mảng đang vẽ là TRUNG VỊ nhiều ngày, còn `bt.dinh` vẫn là của hôm nay
+// ⇒ chữ và biểu đồ nói hai chuyện khác nhau trên cùng một màn hình.
+function btrNhanDinh(bt, V) {
   const b = [];
-  const dp = bt.dinh.pk, ds = bt.dinh.sa;
+  const dinhCua = (arr) => {
+    let bi = -1, bv = -Infinity;
+    (arr || []).forEach((v, i) => { if (v != null && v > bv) { bv = v; bi = i; } });
+    return bi;
+  };
+  const ip = dinhCua(V.pk.cho), is = dinhCua(V.sa.cho);
+  const dp = ip < 0 ? null : bt.gio[ip], ds = is < 0 ? null : bt.gio[is];
   if (dp != null && ds != null) {
     const lech = ds - dp;
     b.push(lech === 0
@@ -1809,19 +1886,17 @@ function btrNhanDinh(bt) {
       : `Đỉnh phòng khám <b>${dp}h</b>, đỉnh siêu âm <b>${ds}h</b> — <b>lệch ${Math.abs(lech)} giờ</b>.`);
   }
   // Giờ nặng nhất theo TỶ SỐ (người trên mỗi phòng đang mở) — đó mới là mức chịu tải thật.
-  const nang = (o, dv) => {
-    let bi = -1, bv = -Infinity;
-    (o.moi_phong || []).forEach((v, i) => { if (v != null && v > bv) { bv = v; bi = i; } });
-    return bi < 0 ? null : { gio: bt.gio[bi], v: bv, mo: o.mo[bi], dv };
+  const nang = (o) => {
+    const i = dinhCua(o.moi_phong);
+    return i < 0 ? null : { gio: bt.gio[i], v: o.moi_phong[i], mo: o.mo[i] };
   };
   // THỜI GIAN GIẢI TOẢ — trả lời chữ "ùn ứ" bằng đơn vị hành động được (bao lâu mới hết hàng),
   // thay vì bằng số người. Nêu bên TẮC LÂU HƠN trước: đó là nút thắt thật.
   const tac = (o) => {
-    let bi = -1, bv = -Infinity;
-    (o.giai_toa || []).forEach((v, i) => { if (v != null && v > bv) { bv = v; bi = i; } });
-    return bi < 0 ? null : { gio: bt.gio[bi], v: bv };
+    const i = dinhCua(o.giai_toa);
+    return i < 0 ? null : { gio: bt.gio[i], v: o.giai_toa[i] };
   };
-  const tp = tac(bt.pk), ts = tac(bt.sa);
+  const tp = tac(V.pk), ts = tac(V.sa);
   if (tp && ts) {
     const pkTac = tp.v >= ts.v;
     const A = pkTac ? { t: "Phòng khám", x: tp } : { t: "Siêu âm", x: ts };
