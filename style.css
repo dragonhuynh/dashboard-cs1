@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   /* Brand Từ Dũ — LẤY ĐÚNG TỪ logo-BVTD.png: xanh #0076BC, hồng #F16DA7 (xem brand-kit.md) */
   --brand-blue: #0076BC; --brand-blue-dark: #005A92; --brand-blue-50: #E6F3FB;
   --brand-pink: #F16DA7; --brand-pink-dark: #D94E8E; --brand-pink-50: #FDEBF3;
@@ -1849,10 +1849,15 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 
 /* ĐIỂM NHẤN: panel trả lời câu hỏi ("mỗi phòng gánh bao nhiêu") phải nổi hơn 2 panel bối cảnh.
    Trước đây mọi panel cùng cỡ nên mắt không biết nhìn đâu trước. */
+/* ⚠️ Nhấn bằng NỀN + viền vẽ bằng box-shadow, TUYỆT ĐỐI không dùng border/padding NGANG:
+   thêm 1px viền hay 12px đệm là panel này rộng khác 2 panel kia ⇒ cột lệch khỏi trục giờ và
+   lệch với các panel còn lại — mất đúng điều kiện để so sánh small multiples (đã dính thật,
+   bài kiểm "lệch tâm cột ↔ trục giờ" bắt được). box-shadow không chiếm chỗ nên hình học nguyên vẹn. */
 .btr-nhanmanh {
-  background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--brand-blue-dark);
-  border-radius: 10px; padding: 10px 12px 8px; margin-bottom: 16px;
+  background: #fff; border-radius: 10px; padding: 12px 0 8px; margin-bottom: 16px;
+  box-shadow: 0 0 0 1px var(--line), inset 0 3px 0 var(--brand-blue-dark);
 }
+.btr-nhanmanh .btr-h { padding: 0 10px; }
 .btr-nhanmanh .btr-t { font-size: 15px; }
 .btr-nhanmanh .btr-plot { height: 104px; }
 .btr-nhanmanh .btr-u { color: var(--muted); font-style: italic; }
@@ -1861,5 +1866,6 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   .btr-body { grid-template-columns: 30px 1fr; }
   .btr-y { font-size: 9px; padding-right: 4px; }
   .btr-b { max-width: 16px; }
-  .btr-nhanmanh { padding: 8px 8px 6px; }
+  .btr-nhanmanh { padding: 10px 0 6px; }   /* KHÔNG đệm ngang — xem ghi chú ở .btr-nhanmanh */
+  .btr-nhanmanh .btr-h { padding: 0 6px; }
 }
