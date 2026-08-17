@@ -90,7 +90,17 @@
          Phần tra cứu (toàn bộ phòng theo khu) do JS dựng bên trong, nằm sau 1 nút bấm. -->
     <main id="cls-rooms" class="rooms"></main>
 
-    <!-- KHỐI 2 — theo dịch vụ. GẬP MẶC ĐỊNH: đây là câu hỏi PHÂN TÍCH ("kỹ thuật nào ùn"),
+    <!-- KHỐI 2 — BỐ TRÍ PHÒNG THEO KHUNG GIỜ (user chốt 2026-08-17): cung (phòng có bác sĩ làm
+         việc) ⇄ cầu (người đang chờ) theo từng giờ, để xem việc mở phòng khám ⇄ phòng siêu âm có
+         tương thích không. GẬP MẶC ĐỊNH — câu hỏi PHÂN TÍCH, không phải việc phải làm ngay (§12.5).
+         ⚠️ KHÔNG dùng trục kép: mỗi panel chỉ chứa các chuỗi CÙNG ĐƠN VỊ (xem renderBoTri). -->
+    <button type="button" id="cls-botri-toggle" class="big-toggle" aria-expanded="false">
+      <span class="caret">▸</span> Bố trí phòng theo khung giờ
+      <span class="bt-sub" id="cls-botri-sub">phòng khám ⇄ phòng siêu âm</span>
+    </button>
+    <section class="cls-wrap" id="cls-botri" hidden></section>
+
+    <!-- KHỐI 3 — theo dịch vụ. GẬP MẶC ĐỊNH: đây là câu hỏi PHÂN TÍCH ("kỹ thuật nào ùn"),
          không phải việc cần làm ngay → không được chiếm chỗ của danh sách việc. -->
     <button type="button" id="cls-svc-toggle" class="big-toggle" aria-expanded="false">
       <span class="caret">▸</span> Xem theo loại kỹ thuật

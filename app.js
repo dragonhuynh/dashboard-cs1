@@ -1016,6 +1016,57 @@ function svcBody(r) {
   return seg("Đang chờ — theo loại kỹ thuật", cho) + seg("Đã làm xong hôm nay", xong);
 }
 
+// HÀNG ĐỢI CỦA PHÒNG NÀY ĐẾN TỪ ĐÂU (user chốt 2026-08-17) — chỉ tab CĐHA.
+// Vì sao cần: "20 ca chưa xong" không nói được phải đi đâu để giải quyết. 18 ca dồn từ MỘT phòng
+// khám là một cuộc gọi; 18 ca rải 12 phòng là chuyện khác hẳn — cùng con số, khác việc phải làm.
+// Nguồn: `tenPhongChiDinh` của chính dòng chỉ định (miễn phí, không gọi thêm API) — xem cls_room_order.
+//
+// ⚠️ CỐ Ý KHÔNG làm nút gập như khối loại kỹ thuật — đã dựng bản gập rồi ĐO mới đổi:
+// nút gập tốn +440px desktop / +2,1 màn điện thoại mà vẫn PHẢI BẤM mới biết ca đến từ đâu. Ở đây
+// tên nơi ngắn (đo: trung vị 8 ký tự, max 30 — tên kỹ thuật thì 53) nên 3 nơi nặng nhất nằm gọn
+// MỘT dòng chữ: rẻ hơn nút gập mà trả lời ngay, không bắt bấm. (Lý do khối loại kỹ thuật phải gập
+// là vì chip của nó chiếm trọn bề ngang thẻ — hai thứ khác nhau, đừng áp cùng một khuôn.)
+//  • CHẶN 3 mẩu, phần dư ghi rõ "+N nơi nữa" (luật 14 — ẩn thì phải nói là đang ẩn). Có căn cứ:
+//    đo mốc thật, 3 nơi nặng nhất chiếm trung vị 100% hàng đợi của phòng (thấp nhất 52%).
+//  • Đủ MỌI nơi + tên đầy đủ nằm ở tooltip và ở khối bung của dòng người thực hiện (xem ncBody).
+function noiWaitLine(r) {
+  const ns = (r.nc || []).filter(n => (n.ton || 0) > 0);
+  if (!ns.length) return "";
+  const HIEN = 3;
+  // ⛔ `kh:1` = HIS KHÔNG ghi phòng chỉ định, chỉ có khoa của NGƯỜI BỆNH (đo: 30/68 phòng chỉ định
+  // ứng với nhiều khoa ⇒ từ khoa KHÔNG suy ra được phòng). Nói đúng chừng ấy, đừng gọi là "khoa
+  // chỉ định"; đánh dấu bằng dấu ° + tooltip, đúng quy ước "HIS ghi vậy, chưa chắc đủ" của dự án.
+  // SỐ ĐI SAU TÊN, trong ngoặc — khác dòng loại kỹ thuật (số đứng trước) và cố ý: ở đó nhãn là
+  // "Đang chờ siêu âm:" nên "17 tử cung buồng trứng" đọc trôi, còn ở đây nhãn là "Chờ từ" ⇒
+  // "Chờ từ 4 KM1.11" đọc vấp thành "chờ từ 4 phòng KM1.11". Ngoặc buộc số vào đúng tên nó,
+  // và dấu · chỉ còn một nghĩa: ngăn cách các nơi.
+  const mau = ns.slice(0, HIEN).map(n =>
+    `<span class="nc-m${n.kh ? " nc-kh" : ""}">${esc(n.ten)}${n.kh ? "°" : ""}`
+    + `&nbsp;(<b>${fmt(n.ton)}</b>)</span>`).join(" · ");
+  const du = ns.length - HIEN;
+  const tip = `Ca đang chờ tại ${r.name} do các nơi này chỉ định:\n`
+    + ns.map(n => `• ${fmt(n.ton)} ca — ${n.ten}${n.kh ? " (° HIS không ghi phòng chỉ định, đây là khoa của người bệnh)" : ""}`).join("\n")
+    + "\n(bấm vào dòng người thực hiện để xem đủ)";
+  return `<div class="nc-line" title="${esc(tip)}"><span class="nc-h">Chờ từ</span> ${mau}`
+    + (du > 0 ? ` · <span class="dv-du">+${du} nơi nữa</span>` : "") + `</div>`;
+}
+
+// CHI TIẾT đủ MỌI nơi chỉ định — xếp vào THÂN của khối người thực hiện (cùng chỗ với chi tiết loại
+// kỹ thuật) ⇒ một cú bấm ra cả ba câu: ai đang làm · đang chờ loại gì · ca đến từ đâu.
+// ⚠️ Trả về THÂN, KHÔNG bọc <details> riêng: dòng phòng chính là <summary>, mà <details> lồng trong
+// <summary> là HTML không hợp lệ (trình duyệt gỡ ra, khối rơi mất) — đúng bẫy đã ghi ở svcBody.
+function ncBody(r) {
+  const ns = (r.nc || []).filter(n => (n.ton || 0) > 0);
+  if (!ns.length) return "";
+  const rows = ns.map(n => `<div class="dv-row"><span class="dv-ten">${esc(n.ten)}${
+      n.kh ? `<span class="nc-note">HIS không ghi phòng chỉ định — đây là khoa của người bệnh</span>` : ""}</span>
+    <span class="dv-num"><b>${fmt(n.ton)}</b> chờ</span>
+    <span class="dv-sub">${fmt(n.cho || 0)} chờ tiếp nhận · ${fmt(n.lam || 0)} đang làm · đã gửi tới ${fmt(n.tong || 0)} ca hôm nay</span></div>`).join("");
+  return `<div class="bs-buoi dv-seg nc-seg"><div class="bs-buoi-h">Đang chờ — theo nơi chỉ định
+      <span class="bs-buoi-n">${fmt(ns.reduce((s, n) => s + (n.ton || 0), 0))} ca · ${ns.length} nơi</span>
+    </div>${rows}</div>`;
+}
+
 // Nhãn cho khối người thực hiện tab CĐHA — "người thực hiện", KHÔNG gọi "bác sĩ" (CĐHA có cả KTV).
 const L_NG = { title: "Người thực hiện theo buổi", who: "người", unit: "ca" };
 
@@ -1348,6 +1399,7 @@ function clsRoomCard(r, rank, maxTon, khuLabels, locOverride) {
     <div class="detail">${cellC}${cellL}${cellX}</div>
     ${bo ? `<div class="detail-sub"><span>${fmt(bo)} ca bỏ qua</span></div>` : ""}
     ${svcWaitChips(r)}
+    ${noiWaitLine(r)}
     ${performerLine(r)}
   </div>`;
 }
@@ -1361,7 +1413,7 @@ function clsRoomCard(r, rank, maxTon, khuLabels, locOverride) {
 // bấm ngay chỗ đang thắc mắc, và khối bung nói cả AI LÀM lẫn ĐANG CHỜ LOẠI GÌ.
 function performerLine(r) {
   const cls = (r.nguoi_chinh || "").trim() ? "room-doc" : "room-doc none";
-  return bsBox(r, r.nguoi_buoi, L_NG, cls, performerInner(r), clsBoxTip(r), svcBody(r));
+  return bsBox(r, r.nguoi_buoi, L_NG, cls, performerInner(r), clsBoxTip(r), svcBody(r) + ncBody(r));
 }
 // Người thực hiện dạng GỌN cho dòng tra cứu (song song `doctorInline` của tab Phòng khám).
 function performerInline(r) {

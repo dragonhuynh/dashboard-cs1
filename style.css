@@ -1667,6 +1667,23 @@ body.tv .room .wait .over { font-size: 17px; vertical-align: 10px; }
 /* Vùng chạm ngón tay ≥44px (Apple HIG) — trên điện thoại thẻ nào cũng có nút này. */
 @media (max-width: 720px) { .room .dv-det > summary.dv-sum { min-height: 44px; } }
 
+/* ---- Dòng "CHỜ TỪ" (nơi chỉ định) trên thẻ CĐHA — DÒNG CHỮ, không phải nút gập ----
+   Đo rồi mới chọn: bản nút gập tốn +440px desktop / +2,1 màn ĐT mà vẫn phải bấm mới thấy tên nơi.
+   Tên nơi ngắn (trung vị 8 ký tự) nên 3 nơi nặng nhất nằm gọn một dòng — trả lời ngay, rẻ hơn.
+   KHÔNG nowrap từng mẩu (bài học dòng loại kỹ thuật: mẩu dài + cấm ngắt dòng = tràn ngang). */
+/* Bậc nhấn giữ Y HỆT dòng loại kỹ thuật (.rc-dv): cả dòng mờ · nhãn đậm · SỐ là thứ đậm-đen nhất
+   · phần dư màu xanh thương hiệu (dấu hiệu "còn nữa"). Đừng chế bậc nhấn mới cho một dòng. */
+.room .nc-line { margin-top: 7px; font-size: 12px; line-height: 1.45; color: var(--muted); }
+.room .nc-line .nc-h { font-weight: 700; }
+.room .nc-line b { font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.room .nc-line .dv-du { font-weight: 700; color: var(--brand-blue-dark); }
+/* Nơi HIS KHÔNG ghi phòng chỉ định (chỉ có khoa của người bệnh): dấu ° + gạch chân chấm — quy ước
+   sẵn có của dự án cho "HIS ghi vậy, chưa chắc đủ". Nghĩa nói bằng CHỮ ở tooltip + khối bung, không
+   mã hoá riêng bằng kiểu gạch (WCAG 1.4.1). */
+.room .nc-line .nc-kh { border-bottom: 1px dotted var(--gray); }
+/* Mục "nơi chỉ định" trong khối bung — cùng kiểu với mục loại kỹ thuật (viền trái xanh nhạt). */
+.nc-seg .nc-note { display: block; font-weight: 500; font-size: 10.5px; color: var(--muted); }
+
 /* ---- Trên DÒNG GỌN: cả dòng phòng là <summary> ---- */
 .calm-list .bs-det > summary.room-calm { min-height: 40px; }
 .calm-list .bs-det > summary.room-calm .rc-name { flex: 1 1 auto; min-width: 0; }
