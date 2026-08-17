@@ -1635,9 +1635,204 @@ function renderClsRooms(cls) {
   setTabBadge("badge-cls", nong.length, "red");
 }
 
+// ====== BỐ TRÍ PHÒNG THEO KHUNG GIỜ — cung ⇄ cầu (user chốt 2026-08-17) ======
+// Trả lời: "mở phòng khám và phòng siêu âm có tương thích nhau không, có gây ùn ứ không".
+//
+// ⚠️ TUYỆT ĐỐI KHÔNG DÙNG TRỤC KÉP (2 thang y trong 1 khung). Đây là lỗi biểu đồ bị phản đối
+//    nhiều nhất trong ngành: Stephen Few (Perceptual Edge) kết luận không có tình huống nào biện
+//    minh được; FT Visual Vocabulary ghi thẳng "be careful… beware spurious correlations";
+//    Datawrapper/Flourish/PolicyViz đều khuyên thay bằng SMALL MULTIPLES. Ở đây: mỗi panel là một
+//    khung riêng, và trong một panel CHỈ đặt các chuỗi CÙNG ĐƠN VỊ (phòng với phòng, người với
+//    người) → hai đường trong cùng panel so sánh được thật, không phải trùng hợp do co giãn thang.
+// ⚠️ Cột (không phải đường): số liệu là ẢNH CHỤP GOM THEO KHUNG GIỜ (rời rạc). Đường nối ngụ ý đo
+//    liên tục — sai bản chất. Cột cũng vẽ được "giờ không có số liệu" thành khoảng trống thật.
+// ⚠️ Màu: chỉ dùng token thương hiệu `--brand-blue-dark` (phòng khám) và `--brand-pink` (siêu âm).
+//    Cặp này đã ĐO bằng trình kiểm mù màu: ΔE 16,6 (protan) — gấp đôi ngưỡng sàn 8. KHÔNG mượn màu
+//    RAG (đỏ/cam/xanh lá) làm màu chuỗi: chúng dành riêng cho mức cảnh báo (brand-kit §5).
+const BTR_DV = { phong: "phòng", nguoi: "người", ca: "ca" };
+
+function btrMax(arrs) {
+  let m = 0;
+  arrs.forEach(a => (a || []).forEach(v => { if (v != null && v > m) m = v; }));
+  return m || 1;
+}
+
+function btrSo(v, le) {
+  if (v == null) return "—";
+  return le ? String(v).replace(".", ",") : fmt(v);
+}
+
+// Một panel = một khung, một đơn vị, tối đa 2 chuỗi. `series[i].arr` cùng độ dài với `gio`.
+function btrPanel(cfg) {
+  const { tieu_de, don_vi, gio, series, le } = cfg;
+  const max = btrMax(series.map(s => s.arr));
+  // Đỉnh của chuỗi ĐẦU TIÊN → nhãn trực tiếp (không bắt người đọc rê chuột mới biết số cao nhất).
+  const dinhIdx = series.map(s => {
+    let bi = -1, bv = -Infinity;
+    (s.arr || []).forEach((v, i) => { if (v != null && v > bv) { bv = v; bi = i; } });
+    return bi;
+  });
+  let cols = "";
+  gio.forEach((h, i) => {
+    const co = series.some(s => s.arr && s.arr[i] != null);
+    if (!co) {
+      // GIỜ CHƯA TỚI / KHÔNG ĐO ĐƯỢC — vẽ TRỐNG có gạch chéo, KHÔNG vẽ cột 0. Vẽ 0 là khẳng định
+      // "giờ đó không có phòng nào mở / không ai chờ", trong khi sự thật là chưa có số (luật 5).
+      cols += `<div class="btr-col btr-na" title="${h}h — chưa có số liệu"></div>`;
+      return;
+    }
+    const tip = `${h}h · ` + series.map(s =>
+      `${s.ten}: ${btrSo(s.arr ? s.arr[i] : null, le)} ${don_vi}`).join(" · ");
+    let bars = "";
+    series.forEach((s, si) => {
+      const v = s.arr ? s.arr[i] : null;
+      if (v == null) { bars += `<i class="btr-b btr-trong"></i>`; return; }
+      // Sàn 2% để giá trị >0 không biến mất hẳn; giá trị 0 thật thì để vạch mảnh sát đáy.
+      const pc = v > 0 ? Math.max(2, (v / max) * 100) : 0;
+      const nhan = (si === 0 && i === dinhIdx[0]) || (si === 1 && i === dinhIdx[1])
+        ? `<u class="btr-dinh">${btrSo(v, le)}</u>` : "";
+      bars += `<i class="btr-b ${s.cls}" style="height:${pc.toFixed(1)}%">${nhan}</i>`;
+    });
+    cols += `<div class="btr-col" title="${esc(tip)}">${bars}</div>`;
+  });
+  const chu = series.map(s =>
+    `<span class="btr-key"><i class="btr-sw ${s.cls}"></i>${esc(s.ten)}</span>`).join("");
+  return `<div class="btr-panel">
+      <div class="btr-h"><span class="btr-t">${esc(tieu_de)}</span>
+        <span class="btr-legend">${chu}</span>
+        <span class="btr-u">cao nhất ${btrSo(max, le)} ${esc(don_vi)}</span></div>
+      <div class="btr-plot">${cols}</div>
+    </div>`;
+}
+
+// Lưới small-multiples: mỗi cụm KHU · TẦNG một ô, DÙNG CHUNG một thang đo → so được cụm với cụm.
+function btrLuoi(bt) {
+  const cum = bt.pk.cum || [];
+  if (!cum.length) return "";
+  const max = btrMax(cum.map(c => c.mo));
+  let html = "", khuTruoc = null;
+  cum.forEach(c => {
+    if (c.khu !== khuTruoc) {
+      if (khuTruoc !== null) html += `</div>`;
+      html += `<div class="btr-khu"><h4>${esc(c.khu_nhan)}</h4><div class="btr-cells">`;
+      khuTruoc = c.khu;
+    }
+    let cols = "";
+    bt.gio.forEach((h, i) => {
+      const v = c.mo[i];
+      // `return` chứ KHÔNG `continue`: đây là callback của forEach, không phải thân vòng lặp —
+      // `continue` ở đây là LỖI CÚ PHÁP, và nó làm VỠ TOÀN BỘ app.js (cả 3 tab trắng, không chỉ
+      // biểu đồ này). Cùng cách viết với btrBang() ngay dưới.
+      if (v == null) { cols += `<i class="btr-mc btr-na"></i>`; return; }
+      const pc = v > 0 ? Math.max(4, (v / max) * 100) : 0;
+      cols += `<i class="btr-mc" style="height:${pc.toFixed(1)}%"></i>`;
+    });
+    const dinh = Math.max(0, ...c.mo.filter(v => v != null));
+    html += `<div class="btr-cell" title="${esc(`${c.khu_nhan} · ${c.tang || "chưa rõ tầng"} — `
+      + `${c.n_phong} phòng, cao nhất ${dinh} phòng cùng hoạt động`)}">
+        <div class="btr-cn">${esc(c.tang || "Chưa rõ tầng")}
+          <span class="btr-cs">${dinh}/${c.n_phong}</span></div>
+        <div class="btr-mplot">${cols}</div></div>`;
+  });
+  return `<div class="btr-grid">${html}</div></div>`;
+}
+
+// Bảng số — BẮT BUỘC có: trên điện thoại không rê chuột được nên tooltip vô dụng, và người đọc
+// cần con số chính xác chứ không chỉ chiều cao cột (chuẩn tiếp cận: mọi biểu đồ phải có bản bảng).
+function btrBang(bt) {
+  let tr = "";
+  bt.gio.forEach((h, i) => {
+    if (bt.pk.mo[i] == null && bt.pk.cho[i] == null) return;
+    tr += `<tr><th>${h}h</th>
+      <td>${btrSo(bt.pk.mo[i])}</td><td>${btrSo(bt.pk.cho[i])}</td>
+      <td class="btr-r">${btrSo(bt.pk.moi_phong[i], true)}</td>
+      <td>${btrSo(bt.sa.mo[i])}</td><td>${btrSo(bt.sa.cho[i])}</td>
+      <td class="btr-r">${btrSo(bt.sa.moi_phong[i], true)}</td></tr>`;
+  });
+  return `<details class="btr-bang"><summary>Xem bảng số</summary>
+    <div class="btr-scroll"><table>
+      <thead><tr><th rowspan="2">Giờ</th><th colspan="3">Phòng khám</th>
+        <th colspan="3">Phòng siêu âm</th></tr>
+      <tr><th>Phòng mở</th><th>Người chờ</th><th>Người/phòng</th>
+          <th>Phòng mở</th><th>Ca chưa xong</th><th>Ca/phòng</th></tr></thead>
+      <tbody>${tr}</tbody></table></div></details>`;
+}
+
+// Nhận định — CHỈ nói điều đọc thẳng ra từ số, không suy diễn nguyên nhân (R09).
+function btrNhanDinh(bt) {
+  const b = [];
+  const dp = bt.dinh.pk, ds = bt.dinh.sa;
+  if (dp != null && ds != null) {
+    const lech = ds - dp;
+    b.push(lech === 0
+      ? `Hai bên cùng đạt đỉnh lúc <b>${dp}h</b>.`
+      : `Đỉnh phòng khám <b>${dp}h</b>, đỉnh siêu âm <b>${ds}h</b> — <b>lệch ${Math.abs(lech)} giờ</b>.`);
+  }
+  // Giờ nặng nhất theo TỶ SỐ (người trên mỗi phòng đang mở) — đó mới là mức chịu tải thật.
+  const nang = (o, dv) => {
+    let bi = -1, bv = -Infinity;
+    (o.moi_phong || []).forEach((v, i) => { if (v != null && v > bv) { bv = v; bi = i; } });
+    return bi < 0 ? null : { gio: bt.gio[bi], v: bv, mo: o.mo[bi], dv };
+  };
+  const np = nang(bt.pk, "người"), ns = nang(bt.sa, "ca");
+  if (np) b.push(`Phòng khám nặng nhất lúc <b>${np.gio}h</b>: ${btrSo(np.v, true)} người/phòng `
+    + `(${np.mo} phòng mở).`);
+  if (ns) b.push(`Siêu âm nặng nhất lúc <b>${ns.gio}h</b>: ${btrSo(ns.v, true)} ca/phòng `
+    + `(chỉ ${ns.mo} phòng mở).`);
+  return b.length ? `<ul class="btr-nd">${b.map(x => `<li>${x}</li>`).join("")}</ul>` : "";
+}
+
+function renderBoTri(bt) {
+  const sec = document.getElementById("cls-botri");
+  const sub = document.getElementById("cls-botri-sub");
+  if (!sec) return;
+  if (!bt || !bt.gio || !bt.gio.length) {
+    // Không có dữ liệu thì NÓI RA lý do, đừng để khối trắng (trắng trông y hệt "hỏng" — L06).
+    sec.innerHTML = `<p class="btr-empty">Chưa dựng được biểu đồ bố trí phòng — cần ít nhất một
+      giờ đã chạy trọn trong ngày. Số sẽ hiện sau vòng cập nhật kế tiếp.</p>`;
+    if (sub) sub.textContent = "chưa đủ số liệu trong ngày";
+    return;
+  }
+  const dp = bt.dinh.pk, ds = bt.dinh.sa;
+  if (sub) {
+    sub.textContent = (dp != null && ds != null && dp !== ds)
+      ? `đỉnh ${dp}h ⇄ ${ds}h — lệch ${Math.abs(ds - dp)} giờ`
+      : `${bt.pk.n_phong} phòng khám ⇄ ${bt.sa.n_phong} phòng siêu âm`;
+  }
+  const ngay = String(bt.ngay || "").split("-").reverse().join("/");
+  const dodo = bt.gio_dang_chay != null
+    ? ` · <span class="btr-canh">giờ ${bt.gio_dang_chay}h đang chạy dở nên chưa tính</span>` : "";
+  sec.innerHTML = `
+    <div class="btr-lead">
+      <p class="btr-dn"><b>Phòng đang hoạt động</b> = phòng <b>có bác sĩ làm việc trong phòng</b>,
+        tính theo khoảng từ ca đầu đến ca cuối của từng người trong buổi.
+        Ngày <b>${esc(ngay)}</b>, số liệu tới <b>${bt.gio_chot}h</b>${dodo}.</p>
+      ${btrNhanDinh(bt)}
+    </div>
+    ${btrPanel({
+      tieu_de: "Số phòng đang hoạt động", don_vi: BTR_DV.phong, gio: bt.gio,
+      series: [{ ten: "Phòng khám", cls: "btr-pk", arr: bt.pk.mo },
+               { ten: "Phòng siêu âm", cls: "btr-sa", arr: bt.sa.mo }] })}
+    ${btrPanel({
+      tieu_de: "Số người đang chờ", don_vi: "người · ca", gio: bt.gio,
+      series: [{ ten: "Chờ khám", cls: "btr-pk", arr: bt.pk.cho },
+               { ten: "Ca siêu âm chưa xong", cls: "btr-sa", arr: bt.sa.cho }] })}
+    ${btrPanel({
+      tieu_de: "Bình quân mỗi phòng đang mở", don_vi: "người/phòng", gio: bt.gio, le: true,
+      series: [{ ten: "Phòng khám", cls: "btr-pk", arr: bt.pk.moi_phong },
+               { ten: "Phòng siêu âm", cls: "btr-sa", arr: bt.sa.moi_phong }] })}
+    <div class="btr-axis">${bt.gio.map(h => `<span>${h}</span>`).join("")}</div>
+    <p class="btr-axis-t">Khung giờ trong ngày</p>
+    <h3 class="btr-h3">Phòng khám hoạt động theo từng khu · từng tầng</h3>
+    <p class="btr-note">Mỗi ô là một tầng, dùng chung một thang đo nên so được tầng này với tầng
+      kia. Số bên phải tên tầng = <b>số phòng cùng hoạt động lúc cao nhất / tổng số phòng</b>.</p>
+    ${btrLuoi(bt)}
+    ${btrBang(bt)}`;
+}
+
 // Wrapper 2 tab dịch vụ — cùng code, khác cfg.
 // CĐHA có THÊM khối phòng (renderClsRooms chạy SAU → nắm dải hành động + huy hiệu tab, xem ghi chú trong hàm).
-function renderCLS(cls) { renderSvcTab("cls", cls); renderClsRooms(cls); }
+function renderCLS(cls) { renderSvcTab("cls", cls); renderClsRooms(cls); renderBoTri(cls && cls.bo_tri); }
 function renderPT(pt)   { renderSvcTab("pt", pt); }
 
 // ====== TAB TOA THUỐC — thời gian chờ lấy thuốc tại nhà thuốc ======
@@ -2831,12 +3026,14 @@ if (_btnPrint) _btnPrint.addEventListener("click", () => window.print());
   if (lo && location.protocol === "file:") lo.style.display = "none";
 })();
 
-// Nút gập/mở khối "theo loại kỹ thuật" (câu hỏi phân tích → không hiện mặc định).
-(function () {
-  const btn = document.getElementById("cls-svc-toggle");
-  const sec = document.getElementById("cls-svc");
+// Nút gập/mở 2 khối phân tích của tab CĐHA (câu hỏi phân tích → không hiện mặc định, §12.5).
+// ⚠️ Mỗi khối một KHOÁ NHỚ RIÊNG: dùng chung khoá thì mở khối này, lần tự nạp lại sau (5') bung
+//    nhầm cả khối kia (đúng bẫy đã ghi ở §12.10 với 2 <details> trong cùng một thẻ).
+[["cls-svc-toggle", "cls-svc", "cls_svc_open"],
+ ["cls-botri-toggle", "cls-botri", "cls_botri_open"]].forEach(([bId, sId, KEY]) => {
+  const btn = document.getElementById(bId);
+  const sec = document.getElementById(sId);
   if (!btn || !sec) return;
-  const KEY = "cls_svc_open";
   const set = (open) => {
     sec.hidden = !open;
     btn.setAttribute("aria-expanded", open);
@@ -2847,4 +3044,4 @@ if (_btnPrint) _btnPrint.addEventListener("click", () => window.print());
   try { init = localStorage.getItem(KEY) === "1"; } catch (e) {}
   set(init);
   btn.addEventListener("click", () => set(sec.hidden));
-})();
+});

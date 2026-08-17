@@ -1716,3 +1716,99 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   .calm-list .bs-det > summary.room-calm { min-height: 44px; }
   .bs-det > summary::after { font-size: 13px; }   /* caret to hơn cho dễ thấy trên ĐT */
 }
+
+/* ============================================================================
+   BỐ TRÍ PHÒNG THEO KHUNG GIỜ (tab CĐHA) — cung ⇄ cầu. user chốt 2026-08-17.
+   ⚠️ Tiền tố .btr- , KHÔNG dùng .bt- : .bt-sub đã có nghĩa khác (chữ phụ trên nút gập) →
+      trùng tiền tố là thuộc tính rò chéo giữa 2 khối không liên quan.
+   ⚠️ Mọi panel + trục giờ dùng CÙNG một lưới cột (grid-auto-columns: 1fr) để thẳng hàng dọc —
+      đó là điều kiện để đọc được small multiples; lệch cột là so sai giờ.
+   ============================================================================ */
+#cls-botri { padding: 12px 14px 14px; }
+.btr-lead { margin-bottom: 12px; }
+.btr-dn { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0 0 8px; }
+.btr-canh { color: var(--amber); font-weight: 600; }
+.btr-nd { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink); line-height: 1.65; }
+.btr-nd li { margin-bottom: 2px; }
+.btr-empty { font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.6; }
+
+.btr-panel { margin-bottom: 14px; }
+.btr-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 6px; }
+.btr-t { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.btr-u { font-size: 11.5px; color: var(--muted); margin-left: auto; }
+.btr-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.btr-key { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); }
+.btr-sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+/* Lưới cột dùng chung cho MỌI panel và cho trục giờ. */
+.btr-plot, .btr-axis {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px;
+}
+.btr-plot {
+  height: 84px; align-items: end; padding-top: 14px;   /* chừa chỗ cho nhãn đỉnh */
+  border-bottom: 1px solid var(--line);
+}
+.btr-col { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; }
+.btr-b {
+  position: relative; flex: 1 1 0; min-width: 0; max-width: 12px;
+  border-radius: 4px 4px 0 0;   /* đầu dữ liệu bo 4px, chân neo vào đường trục */
+}
+.btr-pk { background: var(--brand-blue-dark); }
+.btr-sa { background: var(--brand-pink); }
+.btr-trong { background: transparent; }
+/* Giờ chưa tới / không đo được: gạch chéo mờ — KHÔNG vẽ cột 0 (số 0 nói dối im lặng). */
+.btr-na {
+  background: repeating-linear-gradient(45deg, transparent 0 4px, var(--line) 4px 5px);
+  border-radius: 3px; opacity: .7;
+}
+.btr-plot .btr-na { height: 100%; }
+.btr-dinh {
+  position: absolute; left: 50%; transform: translateX(-50%); top: -13px;
+  font-size: 10px; font-weight: 700; font-style: normal; color: var(--ink); white-space: nowrap;
+}
+.btr-axis { margin-top: 3px; }
+.btr-axis span { font-size: 10.5px; color: var(--muted); text-align: center; }
+.btr-axis-t { font-size: 11px; color: var(--muted); text-align: center; margin: 2px 0 16px; }
+
+/* --- Small multiples: mỗi cụm KHU · TẦNG một ô, CHUNG một thang đo --- */
+.btr-h3 { font-size: 14px; margin: 0 0 4px; color: var(--ink); }
+.btr-note { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0 0 10px; }
+.btr-khu { margin-bottom: 12px; }
+.btr-khu h4 {
+  font-size: 12px; font-weight: 700; color: var(--brand-blue-dark); margin: 0 0 6px;
+  text-transform: uppercase; letter-spacing: .3px;
+}
+.btr-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.btr-cell { border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px 6px; background: #fff; }
+.btr-cn { font-size: 11.5px; font-weight: 600; color: var(--ink); display: flex; gap: 6px; }
+.btr-cs { margin-left: auto; color: var(--muted); font-weight: 700; }
+.btr-mplot {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px;
+  height: 30px; align-items: end; margin-top: 5px;
+}
+.btr-mc { background: var(--brand-blue-dark); border-radius: 2px 2px 0 0; min-height: 0; }
+.btr-mplot .btr-na { height: 100%; border-radius: 2px; }
+
+/* --- Bảng số: bắt buộc có (ĐT không rê chuột được → tooltip vô dụng) --- */
+.btr-bang { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.btr-bang > summary {
+  cursor: pointer; font-size: 13px; font-weight: 600; color: var(--brand-blue-dark);
+  min-height: 32px; display: flex; align-items: center;
+}
+.btr-scroll { overflow-x: auto; margin-top: 6px; }
+.btr-bang table { border-collapse: collapse; font-size: 12px; min-width: 460px; width: 100%; }
+.btr-bang th, .btr-bang td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--line); }
+.btr-bang thead th { color: var(--muted); font-weight: 600; text-align: center; white-space: nowrap; }
+.btr-bang tbody th { text-align: left; color: var(--ink); font-weight: 700; }
+.btr-bang .btr-r { color: var(--brand-blue-dark); font-weight: 600; }
+
+@media (max-width: 720px) {
+  #cls-botri { padding: 10px 10px 12px; }
+  .btr-plot { height: 72px; gap: 2px; }
+  .btr-plot, .btr-axis { gap: 2px; }
+  .btr-b { max-width: 9px; }
+  .btr-dinh { font-size: 9px; }
+  .btr-axis span { font-size: 9.5px; }
+  .btr-cells { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+  .btr-bang > summary { min-height: 44px; }   /* vùng chạm ≥44px (Apple HIG) */
+}
