@@ -1714,20 +1714,25 @@ function btrPanel(cfg) {
   const chu = series.map(s =>
     `<span class="btr-key"><i class="btr-sw ${s.cls}"></i>${esc(s.ten)}`
     + (s.dv ? ` <em>(${esc(s.dv)})</em>` : "") + `</span>`).join("");
-  // Không ghi "cao nhất N" nữa — con số đó đã nằm ngay trên cột đỉnh (nhãn trực tiếp), lặp lại là
-  // nói hai lần một sự thật. Thay bằng THANG ĐO: nói cho người đọc chiều cao cột quy chiếu vào đâu.
-  return `<div class="btr-panel">
+  // TRỤC DỌC + LƯỚI NGANG: bản đầu không có, nên ngoài cột đỉnh ra thì KHÔNG cột nào đọc được giá
+  // trị — người xem phải rê chuột từng cột (và trên điện thoại thì chịu). 3 mốc là đủ: 0 · giữa ·
+  // cao nhất; nhiều hơn thành lưới rối mà không thêm thông tin.
+  const nhanY = [max, max / 2, 0].map(v =>
+    `<span>${btrSo(le ? Math.round(v * 10) / 10 : Math.round(v), le)}</span>`).join("");
+  return `<div class="btr-panel${nhan ? " btr-nhanmanh" : ""}">
       <div class="btr-h"><span class="btr-t">${esc(tieu_de)}</span>
         <span class="btr-legend">${chu}</span>
-        <span class="btr-u">thang 0–${btrSo(max, le)}${don_vi ? " " + esc(don_vi) : ""}</span></div>
-      <div class="btr-plot">${cols}</div>
+        <span class="btr-u">${don_vi ? esc(don_vi) : ""}</span></div>
+      <div class="btr-body"><div class="btr-y">${nhanY}</div>
+        <div class="btr-plot">${cols}</div></div>
     </div>`;
 }
 
 // Lưới small-multiples: mỗi cụm KHU · TẦNG một ô, DÙNG CHUNG một thang đo → so được cụm với cụm.
-function btrLuoi(bt) {
-  const cum = bt.pk.cum || [];
+function btrLuoi(bt, H) {
+  const cum = (bt.pk.cum || []).map(c => ({ ...c, mo: (c.mo || []).slice(H.lo, H.hi + 1) }));
   if (!cum.length) return "";
+  const gioH = H.gio;
   const max = btrMax(cum.map(c => c.mo));
   let html = "", khuTruoc = null;
   cum.forEach(c => {
@@ -1737,7 +1742,7 @@ function btrLuoi(bt) {
       khuTruoc = c.khu;
     }
     let cols = "";
-    bt.gio.forEach((h, i) => {
+    gioH.forEach((h, i) => {
       const v = c.mo[i];
       // `return` chứ KHÔNG `continue`: đây là callback của forEach, không phải thân vòng lặp —
       // `continue` ở đây là LỖI CÚ PHÁP, và nó làm VỠ TOÀN BỘ app.js (cả 3 tab trắng, không chỉ
@@ -1865,6 +1870,10 @@ function renderBoTri(bt) {
   const ngay = String(bt.ngay || "").split("-").reverse().join("/");
   const dodo = bt.gio_dang_chay != null
     ? ` · <span class="btr-canh">giờ ${bt.gio_dang_chay}h đang chạy dở nên chưa tính</span>` : "";
+  // Cắt khoảng giờ chưa tới ở hai đầu — xem btrGioHien(). Mọi panel + trục giờ phải dùng CHUNG
+  // một dải giờ, nếu không các cột lệch nhau và small multiples mất tác dụng.
+  const H = btrGioHien(bt), G = H.gio;
+  const c = (a) => (a || []).slice(H.lo, H.hi + 1);
   sec.innerHTML = `
     <div class="btr-lead">
       <p class="btr-dn"><b>Phòng đang hoạt động</b> = phòng <b>có bác sĩ làm việc trong phòng</b>,
@@ -1873,27 +1882,26 @@ function renderBoTri(bt) {
       ${btrNhanDinh(bt)}
     </div>
     ${btrPanel({
-      tieu_de: "Số phòng đang hoạt động", don_vi: BTR_DV.phong, gio: bt.gio,
-      series: [{ ten: "Phòng khám", cls: "btr-pk", arr: bt.pk.mo },
-               { ten: "Phòng siêu âm", cls: "btr-sa", arr: bt.sa.mo }] })}
+      tieu_de: "Mỗi phòng đang mở gánh bao nhiêu", gio: G, le: true, nhan: true,
+      don_vi: "càng cao càng quá tải",
+      series: [{ ten: "Phòng khám", dv: "người/phòng", cls: "btr-pk", arr: c(bt.pk.moi_phong) },
+               { ten: "Phòng siêu âm", dv: "ca/phòng", cls: "btr-sa", arr: c(bt.sa.moi_phong) }] })}
     ${btrPanel({
-      tieu_de: "Số người đang chờ", gio: bt.gio,
-      series: [{ ten: "Chờ khám", dv: "người", cls: "btr-pk", arr: bt.pk.cho },
-               { ten: "Siêu âm chưa xong", dv: "ca", cls: "btr-sa", arr: bt.sa.cho }] })}
+      tieu_de: "Số phòng đang hoạt động", don_vi: BTR_DV.phong, gio: G,
+      series: [{ ten: "Phòng khám", cls: "btr-pk", arr: c(bt.pk.mo) },
+               { ten: "Phòng siêu âm", cls: "btr-sa", arr: c(bt.sa.mo) }] })}
     ${btrPanel({
-      tieu_de: "Đã giải quyết trong giờ", gio: bt.gio,
-      series: [{ ten: "Lượt khám xong", dv: "lượt", cls: "btr-pk", arr: bt.pk.xong },
-               { ten: "Ca siêu âm có kết quả", dv: "ca", cls: "btr-sa", arr: bt.sa.xong }] })}
-    ${btrPanel({
-      tieu_de: "Bình quân mỗi phòng đang mở", gio: bt.gio, le: true,
-      series: [{ ten: "Phòng khám", dv: "người/phòng", cls: "btr-pk", arr: bt.pk.moi_phong },
-               { ten: "Phòng siêu âm", dv: "ca/phòng", cls: "btr-sa", arr: bt.sa.moi_phong }] })}
-    <div class="btr-axis">${bt.gio.map(h => `<span>${h}</span>`).join("")}</div>
-    <p class="btr-axis-t">Khung giờ trong ngày</p>
+      tieu_de: "Số người đang chờ", gio: G,
+      series: [{ ten: "Chờ khám", dv: "người", cls: "btr-pk", arr: c(bt.pk.cho) },
+               { ten: "Siêu âm chưa xong", dv: "ca", cls: "btr-sa", arr: c(bt.sa.cho) }] })}
+    <div class="btr-body"><div class="btr-y"></div>
+      <div class="btr-axis">${G.map(h => `<span>${h}h</span>`).join("")}</div></div>
+    <p class="btr-axis-t">Khung giờ trong ngày${H.lo > 0 || H.hi < bt.gio.length - 1
+      ? ` — chỉ hiện ${G[0]}h–${G[G.length - 1]}h vì ngoài khoảng này chưa có số liệu` : ""}</p>
     <h3 class="btr-h3">Phòng khám hoạt động theo từng khu · từng tầng</h3>
     <p class="btr-note">Mỗi ô là một tầng, dùng chung một thang đo nên so được tầng này với tầng
       kia. Số bên phải tên tầng = <b>số phòng cùng hoạt động lúc cao nhất / tổng số phòng</b>.</p>
-    ${btrLuoi(bt)}
+    ${btrLuoi(bt, H)}
     ${btrBang(bt)}`;
 }
 

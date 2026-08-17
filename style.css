@@ -1828,3 +1828,38 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 .btr-bang thead .cpk, .btr-bang thead .csa { color: var(--ink); font-weight: 700; }
 .btr-bang tbody tr:hover .cpk { background: #d8ebf8; }
 .btr-bang tbody tr:hover .csa { background: #fbdcea; }
+
+/* ── SỬA SAU PHẢN BIỆN 17/08: trục dọc + lưới ngang + cột dày + điểm nhấn ──────────────────
+   Bản đầu bị chê "khó hiểu": 4 panel giống hệt nhau, không trục dọc (chỉ cột đỉnh có số),
+   và vẽ trọn 6h–20h nên gần nửa bề ngang bỏ trống làm cột mỏng dính. */
+.btr-body { display: grid; grid-template-columns: 40px 1fr; align-items: stretch; }
+.btr-y {
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 14px 6px 0 0; text-align: right; font-size: 10px; color: var(--gray);
+  line-height: 1;
+}
+/* Lưới ngang mảnh: đủ để ước lượng chiều cao, không đủ để cướp sự chú ý của cột. */
+.btr-plot {
+  background-image: repeating-linear-gradient(to top,
+    var(--line) 0 1px, transparent 1px 50%);
+  background-position: bottom;
+}
+.btr-b { max-width: 26px; }          /* dày hơn 12px của bản đầu — ít cột hơn nên có chỗ */
+.btr-axis span { font-size: 11px; }
+
+/* ĐIỂM NHẤN: panel trả lời câu hỏi ("mỗi phòng gánh bao nhiêu") phải nổi hơn 2 panel bối cảnh.
+   Trước đây mọi panel cùng cỡ nên mắt không biết nhìn đâu trước. */
+.btr-nhanmanh {
+  background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--brand-blue-dark);
+  border-radius: 10px; padding: 10px 12px 8px; margin-bottom: 16px;
+}
+.btr-nhanmanh .btr-t { font-size: 15px; }
+.btr-nhanmanh .btr-plot { height: 104px; }
+.btr-nhanmanh .btr-u { color: var(--muted); font-style: italic; }
+
+@media (max-width: 720px) {
+  .btr-body { grid-template-columns: 30px 1fr; }
+  .btr-y { font-size: 9px; padding-right: 4px; }
+  .btr-b { max-width: 16px; }
+  .btr-nhanmanh { padding: 8px 8px 6px; }
+}
