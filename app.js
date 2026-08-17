@@ -1955,9 +1955,14 @@ function btrBangKhu(bt, V, mot) {
 function btrMotBang(bt, x, mot) {
   const V = { pk: x.pk, sa: x.sa };
   const coSa = !!x.sa;
-  const tieu = x.tong ? `<h4 class="btr-bh">Cả 3 khu <span>— khớp với biểu đồ ở trên</span></h4>`
-    : `<h4 class="btr-bh">${esc(x.nhan)}${coSa ? `<span>— có ${x.n_sa} phòng siêu âm</span>`
-        : `<span class="btr-nosa">— khu này không có phòng siêu âm nào</span>`}</h4>`;
+  // Bảng GỘP phải NÓI RA là gộp và vì sao (luật 14): người đọc thấy "Khu KM + Khu M" mà không có
+  // lời giải thích thì không biết số đã cộng lại hay chỉ là hai khu xếp cạnh nhau.
+  const gop = x.n_khu > 1;
+  const tieu = x.tong ? `<h4 class="btr-bh">${esc(x.nhan)} <span>— khớp với biểu đồ ở trên</span></h4>`
+    : `<h4 class="btr-bh">${esc(x.nhan)}${coSa ? `<span>— ${x.n_sa} phòng siêu âm</span>`
+        : `<span class="btr-nosa">— ${gop ? "các khu này" : "khu này"} không có phòng siêu âm
+            nào</span>`}${gop ? `<span>— số đã cộng lại vì ${x.n_khu} khu dùng chung phòng siêu
+            âm</span>` : ""}</h4>`;
   return tieu + btrBang(bt, V, mot, coSa);
 }
 
