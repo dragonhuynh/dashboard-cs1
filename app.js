@@ -1753,10 +1753,20 @@ function btrGop(bt, ngays) {
     };
     const mo = g("mo"), cho = g("cho"), xong = g("xong");
     const ok = chinh(mo);
+    // ⚠️ ĐẢO LẠI quyết định cũ (bản trước KHÔNG lọc `moi_phong`, lý lẽ: "nó là sự thật quan sát
+    // được, không phải suy ra tốc độ"). Lý lẽ đúng nhưng HẬU QUẢ TRÊN MÀN HÌNH thì sai — đo thật
+    // 17/08: 17h còn 3/71 phòng khám mở với 206 người ⇒ 68,7 người/phòng, gấp 3,4 lần đỉnh thật
+    // (20,4). Ba hỏng cùng lúc:
+    //   1. Thang đo panel nổ tung ⇒ MỌI giờ hoạt động chính bị nén còn 30% chiều cao (đo px: 7h–15h
+    //      cột chỉ 8–26px, cột 17h 89px) — đúng lý do người dùng báo "khó phân biệt".
+    //   2. Nhãn đỉnh vẽ ra "68,7 ⇄ 20,4" trong khi dòng chữ NGAY TRÊN nói "phòng khám 17 · siêu âm
+    //      20,4" ⇒ một màn hình hai con số cho cùng một việc.
+    //   3. Biểu đồ kể NGƯỢC câu chuyện: ở giờ hoạt động chính SIÊU ÂM mới là bên nặng hơn.
+    // Bảng số cũng đã in "—" cho 2 cột tỷ số kia ở 16h–17h ⇒ để riêng cột này có số là tự mâu thuẫn
+    // trong cùng một bảng, và trái luật §12.11 ("tỷ số CHỈ tính ở giờ hoạt động chính").
+    // Giờ bị loại KHÔNG bị giấu: panel vẽ ô CHẤM MỜ riêng + nói lý do (luật 14) — xem `btrPanel`.
     return { mo, cho, xong, gio_chinh: ok,
-             // `moi_phong` giữ NGUYÊN mọi giờ (nó là sự thật quan sát được, không phải suy ra tốc
-             // độ); chỉ 2 tỷ số dựa trên NHỊP LÀM VIỆC mới phải giới hạn ở giờ hoạt động chính.
-             moi_phong: ty(cho, mo),
+             moi_phong: loc(ty(cho, mo), ok),
              nang_suat: loc(ty(xong, mo), ok),
              giai_toa: loc(ty(cho, xong), ok) };
   };
@@ -1824,9 +1834,19 @@ function btrGioHien(bt) {
   return { lo, hi, gio: bt.gio.slice(lo, hi + 1) };
 }
 
-// Một panel = một khung, một đơn vị, tối đa 2 chuỗi. `series[i].arr` cùng độ dài với `gio`.
+// Một panel = một khung, tối đa 2 chuỗi. `series[i].arr` cùng độ dài với `gio`.
+// ⚠️ BA TRẠNG THÁI Ô RỖNG, mỗi trạng thái một HOA VĂN riêng (user chốt 17/08: "một là một màu, hai
+// là sọc sọc, ba là chấm chấm" — nguyên tắc đúng, nhưng phải áp vào chỗ nó GIẢI QUYẾT được việc):
+//   · có số      → cột ĐẶC, màu theo chuỗi
+//   · chưa đo được → GẠCH CHÉO (`.btr-na`)   — HIS chưa có mốc thu ở giờ đó
+//   · có số mà tỷ số vô nghĩa → CHẤM (`.btr-ngoai`) — ngoài giờ hoạt động chính
+// Hai cái sau KHÔNG được dùng chung hoa văn: gộp lại thì "chưa đo được" và "đo được nhưng không
+// chia được" đọc y hệt nhau, mà chúng là hai kết luận vận hành khác hẳn.
+// Ngược lại, KHÔNG đổ hoa văn cho hai CHUỖI (phòng khám ⇄ siêu âm): chúng đã tách bằng MÀU (đo mù
+// màu ΔE 16,6 protan) + VỊ TRÍ cố định (khám luôn cột trái). Đổ thêm hoa văn ở đó thì cột sọc va
+// nghĩa với ô "chưa đo được" ngay bên cạnh, và cột chỉ rộng 26px desktop / 16px ĐT nên sinh moiré.
 function btrPanel(cfg) {
-  const { tieu_de, don_vi, gio, series, le, nhan } = cfg;
+  const { tieu_de, don_vi, gio, series, le, nhan, ngoai, goi_y, dv_truc } = cfg;
   const max = btrMax(series.map(s => s.arr));
   // Đỉnh của chuỗi ĐẦU TIÊN → nhãn trực tiếp (không bắt người đọc rê chuột mới biết số cao nhất).
   const dinhIdx = series.map(s => {
@@ -1834,13 +1854,15 @@ function btrPanel(cfg) {
     (s.arr || []).forEach((v, i) => { if (v != null && v > bv) { bv = v; bi = i; } });
     return bi;
   });
-  let cols = "";
+  let cols = "", coNa = false, coNgoai = false;
   gio.forEach((h, i) => {
     const co = series.some(s => s.arr && s.arr[i] != null);
     if (!co) {
       // GIỜ CHƯA TỚI / KHÔNG ĐO ĐƯỢC — vẽ TRỐNG có gạch chéo, KHÔNG vẽ cột 0. Vẽ 0 là khẳng định
       // "giờ đó không có phòng nào mở / không ai chờ", trong khi sự thật là chưa có số (luật 5).
-      cols += `<div class="btr-col btr-na" title="${h}h — chưa có số liệu"></div>`;
+      const ng = ngoai && ngoai[i];
+      if (ng) { coNgoai = true; cols += `<div class="btr-col btr-ngoai" title="${esc(ng)}"></div>`; }
+      else { coNa = true; cols += `<div class="btr-col btr-na" title="${h}h — chưa có số liệu"></div>`; }
       return;
     }
     // Đơn vị ghi THEO TỪNG CHUỖI: hai chuỗi trong panel cùng THANG ĐO nhưng khác danh từ
@@ -1860,18 +1882,40 @@ function btrPanel(cfg) {
     });
     cols += `<div class="btr-col" title="${esc(tip)}">${bars}</div>`;
   });
+  // ĐƠN VỊ ĂN MÀU CỦA CHÍNH CHUỖI, không để `--muted` như bản trước: cùng một màu xanh mang BA nghĩa
+  // qua ba panel (người/phòng · phòng · người) mà đơn vị lại in màu xám trung tính ⇒ mắt không nối
+  // được "màu này ⇄ đơn vị nào". Tô màu là buộc đơn vị ⇄ màu ⇄ chuỗi thành một khối, khỏi phải dò.
+  // ⚠️ Dùng token CHỮ riêng (`--brand-pink-text`), KHÔNG dùng `--brand-pink-dark`: đo được 3,87:1
+  // trên nền trắng, hụt ngưỡng 4,5:1 của WCAG 1.4.3 cho chữ 11,5px.
   const chu = series.map(s =>
     `<span class="btr-key"><i class="btr-sw ${s.cls}"></i>${esc(s.ten)}`
-    + (s.dv ? ` <em>(${esc(s.dv)})</em>` : "") + `</span>`).join("");
+    + (s.dv ? ` <em class="${s.cls === "btr-pk" ? "btr-tpk" : "btr-tsa"}">(${esc(s.dv)})</em>` : "")
+    + `</span>`).join("")
+    // Chú giải ô rỗng chỉ hiện khi trạng thái đó THẬT SỰ có mặt trong panel — in sẵn cả hai ở mọi
+    // panel là dạy người đọc một thứ họ không nhìn thấy, và làm hàng chú giải dài gấp đôi.
+    + (coNa ? `<span class="btr-key"><i class="btr-sw btr-na"></i>chưa có số liệu</span>` : "")
+    + (coNgoai ? `<span class="btr-key"><i class="btr-sw btr-ngoai"></i>ngoài giờ hoạt động chính`
+                 + `</span>` : "");
   // TRỤC DỌC + LƯỚI NGANG: bản đầu không có, nên ngoài cột đỉnh ra thì KHÔNG cột nào đọc được giá
   // trị — người xem phải rê chuột từng cột (và trên điện thoại thì chịu). 3 mốc là đủ: 0 · giữa ·
   // cao nhất; nhiều hơn thành lưới rối mà không thêm thông tin.
-  const nhanY = [max, max / 2, 0].map(v =>
-    `<span>${btrSo(le ? Math.round(v * 10) / 10 : Math.round(v), le)}</span>`).join("");
+  // ĐƠN VỊ LÊN MỐC TRÊN CÙNG CỦA TRỤC — bản trước trục chỉ có SỐ TRẦN ở cả 3 panel (đo: panel "Số
+  // người đang chờ" không có đơn vị ở BẤT KỲ đâu ngoài ngoặc 11,5px trong chú giải). Chỉ ghi ở mốc
+  // trên cùng: lặp ở cả 3 mốc là nhiễu, mà đọc một mốc là đủ suy ra cả trục.
+  const nhanY = [max, max / 2, 0].map((v, k) =>
+    `<span>${btrSo(le ? Math.round(v * 10) / 10 : Math.round(v), le)}`
+    + (k === 0 && dv_truc ? `<i>${esc(dv_truc)}</i>` : "") + `</span>`).join("");
+  // Panel có HAI ĐƠN VỊ khác nhau trên CHUNG một thang đo thì phải NÓI RA (luật 14): đặt cạnh nhau
+  // là tự mời người đọc so chiều cao, mà "người chờ khám" ⇄ "ca siêu âm chưa xong" không quy đổi
+  // được cho nhau. Thứ so được là NHỊP theo giờ (đỉnh rơi vào lúc nào) — chính là câu hỏi của khối.
+  const dvKhac = series.filter(s => s.dv).length > 1 && series[0].dv !== series[1].dv;
+  const uHtml = [goi_y ? `<i>${esc(goi_y)}</i>` : "",
+                 dvKhac ? "hai đơn vị khác nhau — so nhịp theo giờ, đừng so chiều cao hai màu"
+                        : (don_vi ? `đơn vị: ${esc(don_vi)}` : "")].filter(Boolean).join(" · ");
   return `<div class="btr-panel${nhan ? " btr-nhanmanh" : ""}">
       <div class="btr-h"><span class="btr-t">${esc(tieu_de)}</span>
         <span class="btr-legend">${chu}</span>
-        <span class="btr-u">${don_vi ? esc(don_vi) : ""}</span></div>
+        <span class="btr-u">${uHtml}</span></div>
       <div class="btr-body"><div class="btr-y">${nhanY}</div>
         <div class="btr-plot">${cols}</div></div>
     </div>`;
@@ -2033,9 +2077,19 @@ function btrBang(bt, V, mot, coSa) {
     if (V.pk.mo[i] == null && V.pk.cho[i] == null) return;
     tr += `<tr><th>${h}h</th>${o("pk", i)}${coSa ? o("sa", i) : ""}</tr>`;
   });
-  const cot = (c) => `<th class="${c}">Phòng mở</th><th class="${c}">Đang chờ</th>
-      <th class="${c}">Xong trong giờ</th><th class="${c}">Chờ/phòng</th>
-      <th class="${c}">Ca/phòng/giờ</th><th class="${c}">Giải toả (giờ)</th>`;
+  // ⚠️ ĐƠN VỊ PHẢI Ở TỪNG CỘT (user báo 17/08: "màu nền giống nhau thì rất khó phân biệt"). Nền
+  // `--brand-blue-50` phủ đều SÁU cột mang SÁU đơn vị khác nhau (phòng · người · ca · người/phòng ·
+  // ca/phòng/giờ · giờ), mà bản trước chỉ 2/6 tiêu đề có đơn vị ⇒ nền chỉ nói được "cột này thuộc
+  // phòng khám", không nói được "cột này đếm cái gì". Đơn vị xuống DÒNG RIÊNG (`.btr-dv`) để tên
+  // cột vẫn đọc lướt được thành một hàng.
+  // `Ca/phòng/giờ` → `Năng suất`: tên cũ vốn là ĐƠN VỊ đứng nhầm chỗ tiêu đề, nên đọc cả hàng ra
+  // năm khái niệm + một đơn vị. Nay mọi cột cùng khuôn "khái niệm ở trên · đơn vị ở dưới".
+  const cot = (c, sa) => {
+    const u = (t, d) => `<th class="${c}">${t}<i class="btr-dv">${d}</i></th>`;
+    return u("Phòng mở", BTR_DV.phong) + u("Đang chờ", sa ? BTR_DV.ca : BTR_DV.nguoi)
+      + u("Xong trong giờ", BTR_DV.ca) + u("Chờ/phòng", sa ? "ca/phòng" : "người/phòng")
+      + u("Năng suất", "ca/phòng/giờ") + u("Giải toả", "giờ");
+  };
   // ĐT: bảng 13 cột rộng ~1.060px trong khung 370px ⇒ phải kéo ngang 693px. Không nói ra thì nửa
   // "Phòng siêu âm" coi như không tồn tại — người dùng chỉ thấy 4 cột và tưởng bảng chỉ có thế
   // (luật 14). Dòng này CSS ẩn trên desktop (ở đó bảng vừa khít, không có gì phải kéo).
@@ -2175,6 +2229,17 @@ function renderBoTri(bt) {
   // một dải giờ, nếu không các cột lệch nhau và small multiples mất tác dụng.
   const H = btrGioHien(V), G = H.gio;
   const c = (a) => (a || []).slice(H.lo, H.hi + 1);
+  // GIỜ CÓ SỐ NHƯNG TỶ SỐ KHÔNG CÓ NGHĨA — trạng thái thứ ba của panel tỷ số (xem `btrPanel`).
+  // Chỉ dựng cho panel 1; hai panel kia vẽ số đếm nên mọi giờ có số đều vẽ được.
+  const pkC = c(V.pk.gio_chinh), saC = c(V.sa.gio_chinh);
+  const pkM = c(V.pk.mo), saM = c(V.sa.mo);
+  const ngoaiGio = G.map((h, i) => {
+    if (pkC[i] || saC[i]) return null;                        // ít nhất một bên còn tính được
+    if (pkM[i] == null && saM[i] == null) return null;         // chưa đo được thật → để gạch chéo
+    return `${h}h — ngoài giờ hoạt động chính: chỉ còn ${btrSo(pkM[i], !mot)} phòng khám · `
+      + `${btrSo(saM[i], !mot)} phòng siêu âm mở. Chia ra vẫn được nhưng không còn nói lên mức `
+      + `chịu tải (hàng còn lại là phần để sang hôm sau, không phải đang được giải quyết với nhịp đó).`;
+  });
   sec.innerHTML = `
     ${btrThanhChon(bt, ngays)}
     <div class="btr-lead">
@@ -2184,17 +2249,18 @@ function renderBoTri(bt) {
     </div>
     ${btrPanel({
       tieu_de: "Mỗi phòng đang mở gánh bao nhiêu", gio: G, le: true, nhan: true,
-      don_vi: "càng cao càng quá tải",
+      goi_y: "càng cao càng quá tải", dv_truc: "/phòng", ngoai: ngoaiGio,
       series: [{ ten: "Phòng khám", dv: "người/phòng", cls: "btr-pk", arr: c(V.pk.moi_phong) },
                { ten: "Phòng siêu âm", dv: "ca/phòng", cls: "btr-sa", arr: c(V.sa.moi_phong) }] })}
     ${btrPanel({
-      tieu_de: "Số phòng đang hoạt động", don_vi: BTR_DV.phong, gio: G, le: !mot,
+      tieu_de: "Số phòng đang hoạt động", don_vi: BTR_DV.phong, dv_truc: BTR_DV.phong,
+      gio: G, le: !mot,
       series: [{ ten: "Phòng khám", cls: "btr-pk", arr: c(V.pk.mo) },
                { ten: "Phòng siêu âm", cls: "btr-sa", arr: c(V.sa.mo) }] })}
     ${btrPanel({
-      tieu_de: "Số người đang chờ", gio: G, le: !mot,
-      series: [{ ten: "Chờ khám", dv: "người", cls: "btr-pk", arr: c(V.pk.cho) },
-               { ten: "Siêu âm chưa xong", dv: "ca", cls: "btr-sa", arr: c(V.sa.cho) }] })}
+      tieu_de: "Số đang chờ", gio: G, le: !mot,
+      series: [{ ten: "Chờ khám", dv: BTR_DV.nguoi, cls: "btr-pk", arr: c(V.pk.cho) },
+               { ten: "Siêu âm chưa xong", dv: BTR_DV.ca, cls: "btr-sa", arr: c(V.sa.cho) }] })}
     <div class="btr-body"><div class="btr-y"></div>
       <div class="btr-axis">${G.map(h => `<span>${h}h</span>`).join("")}</div></div>
     <p class="btr-axis-t">Khung giờ trong ngày${H.lo > 0 || H.hi < bt.gio.length - 1
