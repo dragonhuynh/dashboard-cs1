@@ -1651,6 +1651,18 @@ function renderClsRooms(cls) {
 //    RAG (đỏ/cam/xanh lá) làm màu chuỗi: chúng dành riêng cho mức cảnh báo (brand-kit §5).
 const BTR_DV = { phong: "phòng", nguoi: "người", ca: "ca" };
 
+// KHU DÙNG CHUNG PHÒNG SIÊU ÂM → BẢNG SỐ gộp làm một (user chốt 2026-08-17: *"khu KM và khu M gom
+// chung 1 bảng… tôi đang quan tâm số tổng. Vì số phòng khám khu M và khu KM dùng chung số lượng
+// phòng siêu âm ở khu KM"*). Với người điều phối, KM và M là MỘT vùng phục vụ: người bệnh khám ở
+// cả hai tòa đều sang phòng siêu âm bên KM ⇒ đọc số tách rời thì Khu M trông như không có năng lực
+// siêu âm, còn Khu KM trông như phải gánh gấp đôi phần của nó.
+// ⚠️ CHỈ gộp Ở BẢNG SỐ. Biểu đồ cột và lưới khu·tầng vẫn TÁCH từng khu, vì chúng trả lời câu "đi
+//    tòa nào, lầu nào" — đúng cái lý do dự án đã tách Nhà KM khỏi Nhà M ngày 17/07 (§5b: gộp 2 tòa
+//    vào một hàng là đi nhầm tòa). Gộp số ≠ gộp đường đi.
+// ⚠️ Tên khu phải viết Y HỆT `toaNha` mà scraper xuất ra ("Nhà KM"), không phải nhãn hiển thị
+//    ("Khu KM") — khớp sai thì nhóm lặng lẽ không thành, bảng vẫn ra 2 cái như cũ.
+const BTR_KHU_GOP = [["Nhà KM", "Nhà M"]];
+
 // ====== CHỌN THỜI GIAN: hôm nay · khoảng ngày · tháng (user chốt 2026-08-17) ======
 // "dò lại ngày phải có THỨ để coi quy luật" → mọi chỗ hiện ngày đều kèm thứ trong tuần.
 const BTR_THU = { 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7", 7: "CN" };
