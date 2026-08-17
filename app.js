@@ -1834,10 +1834,16 @@ function btrPanel(cfg) {
 
 // Lưới small-multiples: mỗi cụm KHU · TẦNG một ô, DÙNG CHUNG một thang đo → so được cụm với cụm.
 function btrLuoi(bt, H) {
-  const cum = (bt.pk.cum || []).map(c => ({ ...c, mo: (c.mo || []).slice(H.lo, H.hi + 1) }));
+  const cum = (bt.pk.cum || []).map(c => ({
+    ...c,
+    mo: (c.mo || []).slice(H.lo, H.hi + 1),
+    mo_sa: (c.mo_sa || []).slice(H.lo, H.hi + 1),
+  }));
   if (!cum.length) return "";
   const gioH = H.gio;
-  const max = btrMax(cum.map(c => c.mo));
+  // MỘT THANG ĐO CHUNG cho cả phòng khám lẫn siêu âm, cả 12 ô: đó là điều kiện để so ô này với ô
+  // kia. Thang riêng từng ô thì cột cao bằng nhau trong khi số thực chênh 10 lần.
+  const max = btrMax(cum.map(c => c.mo).concat(cum.map(c => c.mo_sa)));
   let html = "", khuTruoc = null;
   cum.forEach(c => {
     if (c.khu !== khuTruoc) {
@@ -1845,24 +1851,36 @@ function btrLuoi(bt, H) {
       html += `<div class="btr-khu"><h4>${esc(c.khu_nhan)}</h4><div class="btr-cells">`;
       khuTruoc = c.khu;
     }
+    // Có phòng siêu âm ở cụm này không — cụm không có thì scraper xuất chuỗi RỖNG (không phải
+    // dãy số 0), nhờ vậy phân biệt được "không có phòng" với "có phòng mà đang đóng".
+    const coSa = c.n_phong_sa > 0;
     let cols = "";
     gioH.forEach((h, i) => {
-      const v = c.mo[i];
+      const v = c.mo[i], w = coSa ? c.mo_sa[i] : null;
       // `return` chứ KHÔNG `continue`: đây là callback của forEach, không phải thân vòng lặp —
       // `continue` ở đây là LỖI CÚ PHÁP, và nó làm VỠ TOÀN BỘ app.js (cả 3 tab trắng, không chỉ
       // biểu đồ này). Cùng cách viết với btrBang() ngay dưới.
       // ⚠️ Ô "chưa tới giờ" KHÔNG được mang lớp .btr-mc: .btr-mc khai nền xanh SAU .btr-na nên
       // đè mất gạch chéo → ô rỗng vẽ thành CỘT XANH CAO NHẤT, đọc thành "8 giờ tối phòng nào
       // cũng mở" (chỉ lộ ra khi CHỤP ẢNH — bài kiểm đếm số không thấy).
-      if (v == null) { cols += `<i class="btr-mna"></i>`; return; }
-      const pc = v > 0 ? Math.max(4, (v / max) * 100) : 0;
-      cols += `<i class="btr-mc" style="height:${pc.toFixed(1)}%"></i>`;
+      if (v == null && w == null) { cols += `<i class="btr-mna"></i>`; return; }
+      const cot = (x, cls) => {
+        if (x == null) return "";
+        const pc = x > 0 ? Math.max(4, (x / max) * 100) : 0;
+        return `<i class="${cls}" style="height:${pc.toFixed(1)}%"></i>`;
+      };
+      cols += `<span class="btr-mgio">${cot(v, "btr-mc")}${cot(w, "btr-mc-sa")}</span>`;
     });
     const dinh = Math.max(0, ...c.mo.filter(v => v != null));
-    html += `<div class="btr-cell" title="${esc(`${c.khu_nhan} · ${c.tang || "chưa rõ tầng"} — `
-      + `${c.n_phong} phòng, cao nhất ${dinh} phòng cùng hoạt động`)}">
+    const dinhSa = coSa ? Math.max(0, ...c.mo_sa.filter(v => v != null)) : 0;
+    const tip = `${c.khu_nhan} · ${c.tang || "chưa rõ tầng"} — phòng khám ${c.n_phong} `
+      + `(cao nhất ${dinh} cùng hoạt động)`
+      + (coSa ? ` · phòng siêu âm ${c.n_phong_sa} (cao nhất ${dinhSa})`
+              : " · không có phòng siêu âm");
+    html += `<div class="btr-cell" title="${esc(tip)}">
         <div class="btr-cn">${esc(c.tang || "Chưa rõ tầng")}
-          <span class="btr-cs">${dinh}/${c.n_phong}</span></div>
+          <span class="btr-cs">${dinh}/${c.n_phong}</span>
+          ${coSa ? `<span class="btr-cs sa">${dinhSa}/${c.n_phong_sa}</span>` : ""}</div>
         <div class="btr-mplot">${cols}</div></div>`;
   });
   return `<div class="btr-grid">${html}</div></div>`;
@@ -1873,15 +1891,21 @@ function btrLuoi(bt, H) {
 // MỘT BẢNG CHO MỖI KHU (user chốt 2026-08-17) + một bảng tổng khớp với biểu đồ ở trên.
 // Khu không có phòng siêu âm thì KHÔNG vẽ 6 cột rỗng — nói thẳng bằng chữ, đừng để người đọc
 // nhìn một hàng dấu "—" rồi tưởng mất số liệu (luật 5 · 14).
+// ⚠️ LUÔN MỞ, KHÔNG có nút thu gọn (user chốt 2026-08-17, cùng lượt với nút gập của cả khối):
+//    trước đây là `<details><summary>Xem bảng số theo từng khu</summary>`. Bảng số là BẢN CHỮ của
+//    biểu đồ ngay trên (chuẩn tiếp cận) — gập nó lại thì người không rê chuột được phải bấm mới
+//    đọc được con số, tức đúng thứ nó sinh ra để phục vụ. `.btr-bang` nay là <div>, không phải
+//    <details> ⇒ ĐỪNG thêm <summary> trở lại (style của summary đã xoá khỏi style.css).
 function btrBangKhu(bt, V, mot) {
   const cai = [{ nhan: "Cả 3 khu", pk: V.pk, sa: V.sa, tong: true }]
     .concat((V.khu || []).map(k => ({ nhan: k.nhan, pk: k.pk, sa: k.sa, n_sa: k.n_sa })));
-  return `<details class="btr-bang"><summary>Xem bảng số theo từng khu</summary>
+  return `<div class="btr-bang">
+    <h3 class="btr-h3">Bảng số theo từng khu</h3>
     ${cai.map(x => btrMotBang(bt, x, mot)).join("")}
     <p class="btr-note">“Giải toả” = số người đang chờ ÷ tốc độ giải quyết của chính giờ đó —
       tức <b>với nhịp làm việc lúc đó thì bao lâu mới hết hàng</b>. Ô “—” là giờ chưa đo được
       (chưa có mốc thu, chưa làm xong ca nào, hoặc ngoài giờ hoạt động chính nên tỷ số không có
-      nghĩa).</p></details>`;
+      nghĩa).</p></div>`;
 }
 
 function btrMotBang(bt, x, mot) {
@@ -2075,9 +2099,14 @@ function renderBoTri(bt) {
       <div class="btr-axis">${G.map(h => `<span>${h}h</span>`).join("")}</div></div>
     <p class="btr-axis-t">Khung giờ trong ngày${H.lo > 0 || H.hi < bt.gio.length - 1
       ? ` — chỉ hiện ${G[0]}h–${G[G.length - 1]}h vì ngoài khoảng này chưa có số liệu` : ""}</p>
-    <h3 class="btr-h3">Phòng khám hoạt động theo từng khu · từng tầng</h3>
+    <h3 class="btr-h3">Phòng khám vs Phòng siêu âm — theo từng khu · từng tầng
+      <span class="btr-legend">
+        <span class="btr-key"><i class="btr-sw btr-pk"></i>Phòng khám</span>
+        <span class="btr-key"><i class="btr-sw btr-sa"></i>Phòng siêu âm</span></span></h3>
     <p class="btr-note">Mỗi ô là một tầng, dùng chung một thang đo nên so được tầng này với tầng
-      kia. Số bên phải tên tầng = <b>số phòng cùng hoạt động lúc cao nhất / tổng số phòng</b>.</p>
+      kia. Số bên phải tên tầng = <b>số phòng cùng hoạt động lúc cao nhất / tổng số phòng</b>
+      (xanh = phòng khám, hồng = phòng siêu âm). Tầng không ghi số hồng là
+      <b>tầng đó không có phòng siêu âm nào</b>.</p>
     ${btrLuoi(V, H)}
     ${btrBangKhu(bt, V, mot)}`;
 }

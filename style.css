@@ -1805,11 +1805,10 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 }
 
 /* --- Bảng số: bắt buộc có (ĐT không rê chuột được → tooltip vô dụng) --- */
+/* ⚠️ `.btr-bang` là <div>, KHÔNG còn <details> (user chốt 2026-08-17: bảng số luôn mở, bỏ nút thu
+   gọn) → đã xoá hẳn luật `> summary` (kiểu dáng cho phần tử không còn tồn tại là bẫy cho người sau:
+   đọc CSS tưởng còn nút, đi tìm không thấy). Tiêu đề nay là `.btr-h3` như các tiểu mục khác. */
 .btr-bang { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
-.btr-bang > summary {
-  cursor: pointer; font-size: 13px; font-weight: 600; color: var(--brand-blue-dark);
-  min-height: 32px; display: flex; align-items: center;
-}
 .btr-scroll { overflow-x: auto; margin-top: 6px; }
 .btr-bang table { border-collapse: collapse; font-size: 12px; min-width: 460px; width: 100%; }
 .btr-bang th, .btr-bang td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--line); }
@@ -1826,7 +1825,6 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   .btr-dinh { font-size: 9px; }
   .btr-axis span { font-size: 9.5px; }
   .btr-cells { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
-  .btr-bang > summary { min-height: 44px; }   /* vùng chạm ≥44px (Apple HIG) */
 }
 .btr-key em { font-style: normal; color: var(--gray); }
 
@@ -1919,4 +1917,13 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 }
 .btr-bh span { font-size: 11.5px; font-weight: 500; color: var(--muted); }
 .btr-bh .btr-nosa { color: var(--amber); font-weight: 600; }
-.btr-bang > summary + .btr-bh { margin-top: 6px; }
+.btr-bang > .btr-h3 + .btr-bh { margin-top: 6px; }   /* bảng đầu sát tiêu đề khối (không còn summary) */
+
+/* Lưới khu·tầng: MỖI GIỜ MỘT CẶP CỘT — xanh = phòng khám, hồng = phòng siêu âm
+   (user chốt 2026-08-17: "cần phòng siêu âm màu hồng nữa"). */
+.btr-mgio { display: flex; align-items: flex-end; justify-content: center; gap: 1px; height: 100%; }
+.btr-mc-sa { background: var(--brand-pink); border-radius: 2px 2px 0 0; flex: 1 1 0; min-width: 0; }
+.btr-mgio .btr-mc { flex: 1 1 0; min-width: 0; }
+.btr-cs.sa { color: var(--brand-pink-dark); margin-left: 0; }
+.btr-cn { align-items: baseline; }
+.btr-h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
