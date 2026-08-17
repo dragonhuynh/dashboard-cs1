@@ -500,30 +500,6 @@ body.tv .qtrend { font-size: 16px; vertical-align: 8px; }
   margin-top: 2px; }
 /* Mỗi mẩu không được ngắt giữa chừng — "5 đang / làm" đọc vấp (cùng lý do như .rc-wait ở trên). */
 .room-calm .rc-tt .nb { white-space: nowrap; }
-/* KHỐI MỞ RỘNG của dòng phòng (loại kỹ thuật đang chờ · người thực hiện · chi tiết dịch vụ).
-   Chiếm TRỌN bề ngang dưới hàng tên/số → không bóp cột tên (bài học .rc-wait ở ngay trên).
-   .room-calm phải `wrap`, nếu không khối này bị ép vào cùng hàng và tràn. */
-.room-calm { flex-wrap: wrap; }
-.room-calm .rc-more { flex: 0 0 100%; min-width: 0; margin-top: 6px; }
-.room-calm .rc-more .bs-detail { margin-top: 6px; font-size: 12px; }
-.room-calm .rc-more .bs-detail > summary { cursor: pointer; list-style: none;
-  color: var(--brand-blue-dark); font-weight: 700; padding: 6px 9px; border-radius: 8px;
-  background: rgba(15,23,42,.04); min-height: 32px; display: flex; align-items: center; }
-.room-calm .rc-more .bs-detail > summary::-webkit-details-marker { display: none; }
-.room-calm .rc-more .bs-detail > summary::after { content: "▾"; margin-left: auto; font-size: 11px; }
-.room-calm .rc-more .bs-detail[open] > summary::after { content: "▴"; }
-.room-calm .rc-more .bs-buoi { margin-top: 6px; background: rgba(15,23,42,.03); border-radius: 8px;
-  padding: 6px 9px; }
-.room-calm .rc-more .bs-buoi-h { display: flex; align-items: baseline; gap: 8px; font-weight: 800;
-  color: var(--ink); font-size: 11.5px; padding-bottom: 4px; border-bottom: 1px solid var(--line);
-  margin-bottom: 4px; }
-.room-calm .rc-more .bs-buoi-n { margin-left: auto; font-weight: 600; color: var(--muted); font-size: 11px; }
-.room-calm .rc-more .bs-row { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; line-height: 1.35; }
-.room-calm .rc-more .bs-ten { font-weight: 600; color: var(--ink); flex: 1; min-width: 0; }
-.room-calm .rc-more .bs-luot { font-weight: 800; color: var(--ink); white-space: nowrap; }
-.room-calm .rc-more .bs-gio { color: var(--muted); font-size: 11px; white-space: nowrap;
-  font-variant-numeric: tabular-nums; }
-
 /* ---- LOẠI KỸ THUẬT ĐANG CHỜ (tab CĐHA, user chốt 2026-08-17) --------------------------------
    Hàng đợi 20 ca siêu âm phụ khoa và 20 ca 3D/4D hiện CÙNG một con số nhưng khác hẳn thời gian
    giải quyết → chip nói ra cơ cấu. KHÔNG tô RAG cho chip: đây là THÔNG TIN cơ cấu, không phải
@@ -550,6 +526,29 @@ body.tv .dv-h { font-size: 13px; }
 .dv-ten { flex: 1 1 60%; min-width: 0; font-weight: 600; color: var(--ink); font-size: 12px; }
 .dv-num { font-weight: 800; color: var(--ink); white-space: nowrap; font-size: 12px; }
 .dv-sub { flex-basis: 100%; font-size: 11px; color: var(--muted); }
+/* DÒNG CHỮ "Đang chờ: …" trên dòng phòng — bản gọn của khối chip, cùng khuôn `.rc-tt`.
+   ⚠️ Đã đo: dùng chip ở cả 38 phòng làm tab dài 4,7 → 14,8 màn điện thoại (tên kỹ thuật dài
+   trung vị 53 ký tự nên mỗi chip chiếm trọn bề ngang 390px). Dòng chữ nói đủ chừng ấy loại mà
+   tốn ~1/3 chỗ. Màu --muted (4,76:1), KHÔNG --gray (2,59:1 — WCAG 1.4.3 cho chữ 11px). */
+.room-calm .rc-dv { display: block; font-size: 11px; font-weight: 500; color: var(--muted);
+  margin-top: 2px; line-height: 1.45; overflow-wrap: anywhere; }
+/* ⚠️ KHÔNG cho nowrap ở đây (khác `.rc-tt`): mẩu là cả tên kỹ thuật ~45 ký tự → cấm ngắt dòng là
+   ô lưới 220px không co được và tràn ngang cả trang (đo 320→1920px đều tràn). Số dính với từ đầu
+   bằng &nbsp; trong JS là đủ để không đọc thành "12 / tử cung". */
+.room-calm .rc-dv .dv-m { white-space: normal; }
+/* Ô lưới phải co được, nếu không min-content của dòng chữ dài sẽ đẩy rộng cả cột. */
+.calm-list > * { min-width: 0; }
+.room-calm .rc-dv b { font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.room-calm .rc-dv-h { font-weight: 700; }
+/* "+N loại nữa" — nói ra phần đang ẩn (luật 14), gạch chân chấm để đọc ra là "bấm xem tiếp". */
+.room-calm .dv-du { font-weight: 700; color: var(--brand-blue-dark);
+  text-decoration: underline dotted; text-underline-offset: 2px; }
+body.tv .room-calm .rc-dv { font-size: 14px; }
+/* Mục "loại dịch vụ" trong khối bung — nằm chung với danh sách người thực hiện nên phải phân biệt
+   được: viền trái brand-blue nhạt (không dùng RAG: đây là thông tin, không phải cảnh báo). */
+.bs-buoi.dv-seg { border-left: 3px solid var(--brand-blue-50); }
+body.tv .dv-ten, body.tv .dv-num { font-size: 15px; }
+body.tv .dv-sub { font-size: 13px; }
 .room-calm .rc-sub { color: var(--gray); font-size: 12px; margin-left: auto; }
 .all-clear-box { background: var(--green-bg); border: 1px solid #bbf7d0; color: #166534;
   border-radius: 12px; padding: 16px 18px; font-weight: 700; font-size: 15px; }
