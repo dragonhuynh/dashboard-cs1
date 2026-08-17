@@ -123,26 +123,56 @@ function applyMeta(data) {
   const rd = (data.report_date || data.captured_at || "").slice(0, 10);
   const rdEl = document.getElementById("report-date");
   if (rdEl) rdEl.textContent = rd ? rd.split("-").reverse().join("/") : "—";
+  // Lọc KHOA chỉ áp cho tab CĐHA (KHOA_HIEN_THI_CLS) → cất riêng, dải phạm vi tự nói khi mở tab đó.
+  _khoaFilterCls = (data.cls && data.cls.khoa_filter) || null;
+  _phongGiuLaiCls = (data.cls && data.cls.phong_giu_lai) || null;
+  _anFilterCls = (data.cls && data.cls.an_filter) || null;
   applyScopeBand(data.khu_filter);
 }
 
-// PHẠM VI đang hiển thị. Scraper lọc khu (KHU_HIEN_THI) → mọi số trên 2 tab chỉ tính các khu đó.
+// PHẠM VI đang hiển thị. Scraper lọc khu (KHU_HIEN_THI) → mọi số trên 2 tab chỉ tính các khu đó;
+// riêng tab CĐHA còn lọc KHOA (KHOA_HIEN_THI_CLS) → chỉ hiện khoa CĐHA.
 // KHÔNG nói ra là để người dùng hiểu nhầm 2 kiểu, kiểu nào cũng tai hại: (a) tưởng dashboard mất
 // phòng/hỏng; (b) tưởng "248 người chờ" là của CẢ VIỆN rồi ra quyết định trên số thiếu.
-// Không lọc (khu_filter = null) → ẩn hẳn dải, không chiếm chỗ.
+// Không lọc gì → ẩn hẳn dải, không chiếm chỗ.
 function applyScopeBand(khus) {
   const el = document.getElementById("scope-band");
   if (!el) return;
   _khuFilter = (khus && khus.length) ? khus : null;
+  const tab = tabDangXem();
+  // Lọc khoa CHỈ có ở tab CĐHA → nói ra khi đang đứng ở đó, để nó không nói SAI phạm vi tab khác.
+  const khoas = (tab === "cls" && _khoaFilterCls && _khoaFilterCls.length) ? _khoaFilterCls : null;
+  const ans = (tab === "cls" && _anFilterCls && _anFilterCls.length) ? _anFilterCls : null;
   // ⚠️ Lọc khu CHỈ áp cho 2 tab lấy từ luồng phòng khám/CĐHA. Tab Phòng·Giường là luồng khác
   // (`beds_flow.py --nb`, 14 khoa NỘI TRÚ toàn viện) — để dải này nằm đó là nói SAI phạm vi:
   // người xếp giường đọc ra "1.993 giường chỉ của 3 khu". Ẩn hẳn khi đang ở tab giường.
-  if (!_khuFilter || tabDangXem() === "giuong") { el.hidden = true; el.innerHTML = ""; return; }
+  if (tab === "giuong" || (!_khuFilter && !khoas && !ans)) { el.hidden = true; el.innerHTML = ""; return; }
   el.hidden = false;
+  const dong = [];
+  if (_khuFilter)
+    dong.push(`Chỉ xem <b>${_khuFilter.join(" · ")}</b>` +
+      ` <span class="sb-note">— mọi số trên trang chỉ tính ${_khuFilter.length} khu này, không phải toàn viện</span>`);
+  // ⚠️ Phải nói luôn vế "gồm cả phòng đặt trong địa bàn khoa khác": bộ lọc chạy theo KHOA HIS KHAI,
+  // còn dòng phòng ghi khoa theo ĐỊA BÀN (§5b) → không nói thì dòng "Siêu âm - P3 (HIẾM MUỘN) ·
+  // Khoa Hiếm muộn" đọc ra như lọc bị hỏng (luật 14).
+  // Nhãn phần GIỮ THEO TÊN PHÒNG do scraper cấp (cls.phong_giu_lai) — đổi luật bên đó là chữ ở đây
+  // tự theo, không phải sửa 2 nơi.
+  if (khoas) {
+    const giu = (_phongGiuLaiCls && _phongGiuLaiCls.length)
+      ? khoas.join(" · ") + " và " + _phongGiuLaiCls.join(" · ") : khoas.join(" · ");
+    dong.push(`Tab CĐHA chỉ hiện <b>${giu}</b>` +
+      ` <span class="sb-note">— các khoa khác tạm ẩn; phòng siêu âm đặt trong địa bàn khoa khác vẫn giữ</span>`);
+  }
+  // ⚠️ Dòng trên CHƯA ĐỦ: danh sách ẩn có mục thuộc CHÍNH khoa CĐHA (`Chưa phân phòng - Khoa Hiếm
+  // Muộn` — HIS khai khoa CĐHA), nên "chỉ hiện khoa CĐHA" đọc ra là mọi phòng khoa đó đều còn, mà
+  // thực tế đã bớt. Không nói ra thì người xem tưởng mất phòng/hỏng số (luật 14).
+  // Chữ rút gọn hết mức: dòng trên đã nói "Tab CĐHA" nên bỏ, và ghi chú ngắn lại — trên máy 390px
+  // mỗi dòng thừa của dải này đẩy KPI + phòng đầu tiên xuống dưới màn hình đầu (§12.4).
+  if (ans)
+    dong.push(`Đã ẩn <b>${ans.join(" · ")}</b>` +
+      ` <span class="sb-note">— ẩn theo yêu cầu, số liệu không thiếu</span>`);
   el.innerHTML = `<span class="sb-ico" aria-hidden="true">🔎</span>
-    <span class="sb-text">Chỉ xem <b>${khus.join(" · ")}</b>
-      <span class="sb-note">— mọi số trên trang chỉ tính ${khus.length} khu này, không phải toàn viện</span>
-    </span>`;
+    <span class="sb-text">${dong.map(d => `<span class="sb-line">${d}</span>`).join("")}</span>`;
 }
 
 /* Gộp thời gian các chặng của MỘT tab (tải + ghi DB) → "Phòng khám 6,0 giây". */
@@ -607,6 +637,11 @@ let _roomsData = null;
 let _khuLabels = {};      // khu (tòa nhà) → nhãn; scraper cấp qua data.khu_labels
 let _khuOrder = [];       // thứ tự tòa nhà, scraper cấp qua data.khu_order
 let _khuFilter = null;    // các khu ĐANG hiện (data.khu_filter); null = hiện hết. Xem applyScopeBand.
+let _khoaFilterCls = null; // khoa ĐANG hiện ở RIÊNG tab CĐHA (cls.khoa_filter); null = hiện hết.
+let _phongGiuLaiCls = null; // nhãn các phòng GIỮ LẠI theo tên dù khác khoa (cls.phong_giu_lai).
+let _anFilterCls = null;   // nhãn các thứ bị ẨN HẲN khỏi tab CĐHA (cls.an_filter). Phải nói ra:
+                           // có mục thuộc CHÍNH khoa CĐHA (Chưa phân phòng - Khoa Hiếm Muộn) nên
+                           // dòng "chỉ hiện khoa CĐHA" ở trên là CHƯA ĐỦ để giải thích (luật 14).
 let _trendData = null;
 let _trendRooms = null;     // cache rooms cho panel xu hướng (re-render khi đổi kỳ so sánh)
 // Hai tab "dịch vụ" (CLS + PT-TT) dùng CHUNG code render — chỉ khác id/nhãn/lệnh.
@@ -702,26 +737,72 @@ function roomCard(r, rank, maxWait) {
       ${alert}
       <div class="detail">${cellK}${cellKL}${cellDK}</div>
       ${docLine}
-      ${doctorSessionDetail(r)}
     </div>`;
   }
 }
 
-// Dòng BÁC SĨ trên thẻ phòng — "số BS + BS chính" (user chốt 2026-07-16).
+// ====== BẤM ĐỂ SỔ CHI TIẾT BÁC SĨ (tab Phòng khám — user chốt 2026-08-17) ======
+// User: "khi ấn vào (hoặc rê chuột vào, tùy bạn quyết định) thì sổ xuống chi tiết bác sĩ đã khám".
+// CHỐT: **BẤM**, không phải rê chuột — 3 lý do đo được, đừng đổi lại:
+//  1. Trang này xem nhiều trên ĐIỆN THOẠI (đo 10,8 màn ở 390px) và MÀN HÌNH TƯỜNG cảm ứng —
+//     hai nơi KHÔNG CÓ hover. Tính năng chỉ mở bằng hover là tính năng không tồn tại với họ.
+//  2. Danh sách có 82 dòng: rê chuột từ đầu xuống cuối sẽ bung/cụp liên tiếp, trang nhảy loạn
+//     (WCAG 1.4.13 Content on Hover — nội dung hiện khi rê phải ổn định và bỏ được).
+//  3. <details> NATIVE: đi được bằng bàn phím (Tab + Enter), có sẵn ngữ nghĩa cho trình đọc màn
+//     hình, chạy trên file:// mà không cần wiring JS. Hover chỉ dùng làm TÍN HIỆU (đổi nền nhẹ).
+//
+// Nhớ phòng nào đang mở: trang TỰ NẠP LẠI mỗi 5′ (AUTO_MS) và vẽ lại toàn bộ #rooms → khối đang
+// đọc dở sẽ tự cụp. Giữ trong bộ nhớ phiên (KHÔNG localStorage: đây là trạng thái đang-xem, không
+// phải cài đặt; sang ngày hôm sau mở lại 40 phòng là nhiễu).
+const _bsMo = new Set();
+document.addEventListener("toggle", (e) => {
+  const d = e.target;
+  if (!d || !d.matches || !d.matches("details[data-bs]")) return;
+  const k = d.getAttribute("data-bs");
+  if (d.open) _bsMo.add(k); else _bsMo.delete(k);
+}, true);   // ⚠️ `toggle` KHÔNG nổi bọt (bubble) → BẮT BUỘC bắt ở pha capture, nếu không listener
+            // ủy quyền này không bao giờ chạy và mọi khối sẽ cụp lại sau mỗi lần tự nạp lại.
+
+// Bọc "dòng tóm tắt + khối chi tiết" thành một khối bấm-mở.
+// KHÔNG có chi tiết ⇒ trả về dòng tĩnh, KHÔNG dựng nút bấm: cho bấm ra khối rỗng là hứa suông
+// (Baymard) — và ở đây "rỗng" còn dễ bị đọc thành "dashboard mất dữ liệu" (luật 5).
+function bsBox(r, bb, L, sumCls, sumInner, tip) {
+  const body = sessionBody(bb, L);
+  if (!body) return `<div class="${sumCls}">${sumInner}</div>`;
+  const n = sessionCount(bb);
+  const t = tip || `Bấm để xem ${n} ${L.who} đã làm tại ${r.name} hôm nay (từng người · số ${L.unit} · giờ)`;
+  return `<details class="bs-det" data-bs="${esc(r.key)}"${_bsMo.has(r.key) ? " open" : ""}>
+    <summary class="${sumCls}" title="${esc(t)}">${sumInner}</summary>
+    <div class="bs-body">${body}</div></details>`;
+}
+
+// Dòng BÁC SĨ trên thẻ phòng — "số BS + BS chính" (user chốt 2026-07-16), nay CHÍNH NÓ là nút mở
+// chi tiết (user chốt 2026-08-17). Trước đây thẻ có HAI khối: dòng này + một hàng "👥 Bác sĩ theo
+// buổi (7)" ngay dưới → nói lại y con số 7, tốn ~40px/thẻ, và người dùng phải bấm ở chỗ KHÁC với
+// chỗ đang thắc mắc. Nay bấm thẳng vào dòng đang đọc.
 //  • ≥2 BS: nêu số BS luân phiên (cường độ nhân lực) + ai khám chính.
 //  • 1 BS : chỉ 1 tên (khỏi ghi "1 BS · chính" thừa).
 //  • chưa có: dòng mờ, giữ chỗ cho thẻ không nhảy layout.
 function doctorLine(r) {
-  const ten = (r.bac_si_chinh || "").trim();
-  const n = r.so_bac_si || 0;
-  if (!ten) return `<div class="room-doc none">👨‍⚕️ <span>chưa rõ bác sĩ trực</span></div>`;
-  const lt = docLuot(r, ten);
-  const luot = lt ? ` <span class="doc-luot">${fmt(lt)} lượt</span>` : "";
-  const who = n >= 2
-    ? `<b>${n} BS luân phiên</b> · chính: ${ten}${luot}`
-    : `${ten}${luot}`;
-  return `<div class="room-doc">👨‍⚕️ ${who}</div>`;
+  const inner = docInner(r);
+  const cls = (r.bac_si_chinh || "").trim() ? "room-doc" : "room-doc none";
+  return bsBox(r, r.bac_si_buoi, L_BS, cls, inner);
 }
+
+// Nội dung BÊN TRONG dòng bác sĩ (dùng cho cả dòng tĩnh lẫn <summary>).
+// ⚠️ Phần chữ phải nằm TRONG MỘT thẻ `.rd-who` duy nhất: `.room-doc` là flex container, mà mọi con
+// inline (kể cả `<b>`) đều bị biến thành flex item riêng → "7 BS luân phiên" tách khỏi "· chính:
+// Châu Uy Bằng" thành 2 cột hẹp và vỡ 3 dòng trên điện thoại (user gửi ảnh 2026-08-17).
+function docInner(r) {
+  const ten = (r.bac_si_chinh || "").trim();
+  if (!ten) return `<span class="rd-ico">👨‍⚕️</span><span class="rd-who">chưa rõ bác sĩ trực</span>`;
+  const n = soNguoiBuoi(r.bac_si_buoi) || r.so_bac_si || 0;
+  const lt = docLuot(r, ten);
+  const luot = lt ? `<span class="doc-luot">${fmt(lt)} lượt</span>` : "";
+  const who = n >= 2 ? `<b>${n} BS luân phiên</b> · chính: ${ten}` : ten;
+  return `<span class="rd-ico">👨‍⚕️</span><span class="rd-who">${who}</span>${luot}`;
+}
+const L_BS = { title: "Bác sĩ theo buổi", who: "BS", unit: "lượt" };
 
 // Số BN 1 bác sĩ đã khám TẠI PHÒNG NÀY tính tới hiện tại (user chốt 2026-07-16) = cộng cả 2 buổi
 // của `clinic_doctor_session` (nguồn duy nhất có lượt tách theo bác sĩ). Không có dữ liệu → 0 (ẩn số).
@@ -750,10 +831,20 @@ function performerSessionDetail(r) {
   return sessionDetail(r.nguoi_buoi, { title: "Người thực hiện theo buổi", who: "người", unit: "ca" });
 }
 
+// Số NGƯỜI đã làm ở phòng hôm nay = số tên duy nhất của 2 buổi (KHÔNG tính nhóm trả kết quả).
+// Suy thẳng từ `bac_si_buoi`/`nguoi_buoi` — tức từ CHÍNH dữ liệu mà khối chi tiết bày ra → con số
+// trên dòng tóm tắt không bao giờ lệch với số tên bấm ra được (user chốt 2026-07-16: "nếu 7 BS thì
+// phải biết 7 BS đó ai"). Không có dữ liệu → 0, để caller rơi về cột `so_bac_si` của export.
+function soNguoiBuoi(bb) {
+  if (!bb) return 0;
+  return new Set([...(bb.sang || []), ...(bb.chieu || [])].map(d => d.ten)).size;
+}
+function sessionCount(bb) { return soNguoiBuoi(bb); }
+
 // AI đã làm ở phòng HÔM NAY, tách buổi sáng/chiều — dùng CHUNG cho cả 2 tab.
 // `bb` = {sang:[…], chieu:[…], ket_qua:[…]} (ket_qua chỉ có ở tab Phòng khám).
-// <details> NATIVE: gập mặc định (thẻ không phình) + chạy được trên file:// khỏi wiring JS.
-function sessionDetail(bb, L) {
+// THÂN của khối chi tiết (không kèm <details>) → dùng lại được ở CẢ thẻ lẫn dòng gọn.
+function sessionBody(bb, L) {
   if (!bb) return "";
   const sang = bb.sang || [], chieu = bb.chieu || [], kq = bb.ket_qua || [];
   if (!sang.length && !chieu.length && !kq.length) return "";
@@ -769,9 +860,85 @@ function sessionDetail(bb, L) {
   // khám → con số "N BS" trên thẻ (chỉ đếm người khám) không mâu thuẫn với danh sách. Xem §6a.
   const kqSeg = seg("Trả kết quả", kq, "bs-kq",
     `<div class="bs-note">Không tính là khám — chỉ thao tác trả/xem kết quả xét nghiệm</div>`);
-  const n = new Set([...sang, ...chieu].map(d => d.ten)).size;
-  return `<details class="bs-detail"><summary>👥 ${L.title} (${n})</summary>
-    ${seg("Buổi sáng", sang)}${seg("Buổi chiều", chieu)}${kqSeg}</details>`;
+  return `${seg("Buổi sáng", sang)}${seg("Buổi chiều", chieu)}${kqSeg}`;
+}
+
+// Khối gập ĐỘC LẬP (tiêu đề riêng "👥 … (N)") — tab CĐHA còn dùng. Tab Phòng khám nay bấm thẳng
+// vào dòng bác sĩ/dòng phòng nên không gọi hàm này nữa (xem bsBox).
+function sessionDetail(bb, L) {
+  const body = sessionBody(bb, L);
+  if (!body) return "";
+  return `<details class="bs-detail"><summary>👥 ${L.title} (${sessionCount(bb)})</summary>${body}</details>`;
+}
+
+// ================= HÀNG ĐỢI GỒM LOẠI GÌ (tab CĐHA — user chốt 2026-08-17) =================
+// "20 ca chưa xong" KHÔNG đủ để điều phối: 20 ca siêu âm phụ khoa giải quyết nhanh hơn hẳn 20 ca
+// siêu âm 3D/4D, mà hai phòng đó hiện con số y hệt nhau (user: "chờ Siêu âm phụ khoa 5 ca thì
+// nhanh hơn siêu âm 3D 2 ca"). Nguồn: bảng cls_room_service → export gắn r.dv = [{ten,cho,lam,…}].
+
+// Bỏ dấu để so chuỗi (không đụng tới chữ hiển thị — chỉ dùng cho phép so).
+function khongDau(s) {
+  return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toLowerCase();
+}
+
+// NHÃN NGẮN cho chip — rút gọn CÓ LUẬT, tuyệt đối không bịa chữ viết tắt y khoa (đọc sai một chữ
+// trong tên kỹ thuật là điều phối sai phòng). Chỉ làm 2 việc, cả 2 đều suy từ chính dữ liệu:
+//   • Tách phần trong [ ] — đó là mô tả phụ HIS thêm vào → xuống dòng phụ mờ, KHÔNG xoá.
+//   • Lược cụm mở đầu đã có sẵn trong TÊN PHÒNG ("Siêu âm …" ở phòng Siêu âm = nói lại điều đã
+//     biết, mà tên dịch vụ dài trung vị 53 ký tự / max 97 nên từng chữ đều phải đáng giá).
+// Tên ĐẦY ĐỦ nguyên văn HIS vẫn còn ở tooltip + khối "Loại dịch vụ hôm nay" → không cắt thông tin.
+function dvNhan(ten, tenPhong) {
+  let s = String(ten || "").trim(), phu = "";
+  const m = s.match(/^([^[]+)\[(.+)\]\s*$/);
+  if (m) { s = m[1].trim(); phu = m[2].trim(); }
+  const kp = khongDau(tenPhong), tu = s.split(/\s+/);
+  for (let n = Math.min(3, tu.length - 1); n >= 1; n--) {
+    if (kp.includes(khongDau(tu.slice(0, n).join(" ")))) { s = tu.slice(n).join(" "); break; }
+  }
+  s = s.replace(/^[-–,\s]+/, "");
+  if (s) s = s[0].toUpperCase() + s.slice(1);
+  return { chinh: s || String(ten || "").trim(), phu };
+}
+
+// CHIP: MỌI loại còn đang chờ của phòng — KHÔNG chặn top-N, không "+N loại nữa" (user chốt: đủ
+// thông tin, không cắt bớt). Đo thật từ BC01: 1 phòng siêu âm chạy trung vị 5 loại/ngày, nên hàng
+// đợi tại một mốc chỉ vài loại → hiện hết vẫn gọn. Xếp theo số ca giảm dần (export đã xếp sẵn).
+function svcWaitChips(r) {
+  const ds = (r.dv || []).filter(d => (d.ton || 0) > 0);
+  if (!ds.length) return "";
+  const chips = ds.map(d => {
+    const nh = dvNhan(d.ten, r.name);
+    const tip = `${d.ten} — ${fmt(d.cho || 0)} chờ tiếp nhận · ${fmt(d.lam || 0)} đang làm`
+      + ` · ${fmt((d.kq || 0) + (d.xem || 0))} đã xong · tổng ${fmt(d.tong || 0)} ca hôm nay`;
+    return `<span class="dv-chip" title="${esc(tip)}"><b>${fmt(d.ton)}</b> ca · ${esc(nh.chinh)}`
+      + (nh.phu ? `<i>${esc(nh.phu)}</i>` : "") + `</span>`;
+  }).join("");
+  return `<div class="dv-wrap"><div class="dv-h">Đang chờ theo loại kỹ thuật</div>
+    <div class="dv-chips">${chips}</div></div>`;
+}
+
+// CHI TIẾT: đủ MỌI loại của phòng hôm nay (kể cả đã làm xong) với tên ĐẦY ĐỦ nguyên văn HIS +
+// đủ 5 trạng thái. Gập mặc định để dòng/thẻ không phình — cùng khuôn <details> với khối bác sĩ.
+function svcDetail(r) {
+  const ds = r.dv || [];
+  if (!ds.length) return "";
+  const cho = ds.filter(d => (d.ton || 0) > 0), xong = ds.filter(d => !(d.ton || 0));
+  const rows = arr => arr.map(d => {
+    const mau = [];
+    if (d.cho) mau.push(`${fmt(d.cho)} chờ tiếp nhận`);
+    if (d.lam) mau.push(`${fmt(d.lam)} đang làm`);
+    if ((d.kq || 0) + (d.xem || 0)) mau.push(`${fmt((d.kq || 0) + (d.xem || 0))} đã xong`);
+    if (d.bo) mau.push(`${fmt(d.bo)} bỏ qua`);
+    return `<div class="dv-row"><span class="dv-ten">${esc(d.ten)}</span>
+      <span class="dv-num">${d.ton ? `<b>${fmt(d.ton)}</b> chờ` : "✓ xong"}</span>
+      <span class="dv-sub">${mau.join(" · ")} · tổng ${fmt(d.tong || 0)} ca</span></div>`;
+  }).join("");
+  const seg = (label, arr) => arr.length
+    ? `<div class="bs-buoi"><div class="bs-buoi-h">${label}
+         <span class="bs-buoi-n">${fmt(arr.reduce((s, d) => s + (d.ton || 0), 0))} ca · ${arr.length} loại</span>
+       </div>${rows(arr)}</div>` : "";
+  return `<details class="bs-detail dv-detail"><summary>📋 Loại dịch vụ hôm nay (${ds.length})</summary>
+    ${seg("Còn đang chờ", cho)}${seg("Đã làm xong", xong)}</details>`;
 }
 
 // Dòng GỌN cho phòng đang ổn (xanh) / chưa hoạt động: chỉ "còn mấy ca chờ".
@@ -888,19 +1055,28 @@ function pkHotRow(r, rank, maxCho) {
 function doctorInline(r) {
   const ten = (r.bac_si_chinh || "").trim();
   if (!ten) return "";
-  const n = r.so_bac_si || 0;
-  return `<span class="rc-bs">👨‍⚕️ ${ten}${n >= 2 ? ` +${n - 1}` : ""}</span>`;
+  const n = soNguoiBuoi(r.bac_si_buoi) || r.so_bac_si || 0;
+  // "+2" một mình là số trần (xem .claude/rules/ngon-ngu-ui.md) → nói đủ nghĩa trong tooltip,
+  // còn "họ là ai" thì bấm vào dòng là ra — khỏi phải nhét thêm chữ vào dòng vốn đã chật.
+  const tip = n >= 2 ? `${n} BS luân phiên hôm nay · khám nhiều nhất: ${ten}` : ten;
+  return `<span class="rc-bs" title="${esc(tip)}">👨‍⚕️ ${ten}${n >= 2 ? ` +${n - 1}` : ""}</span>`;
 }
 // `noi` = chuỗi vị trí ghi trên dòng; bỏ trống thì tự lấy "Khoa · Tầng". Dòng nằm TRONG cụm tầng
 // chỉ cần ghi KHOA (tiêu đề cụm đã nói tầng rồi) — lặp lại tầng ở 35 dòng của Khu N là nhiễu, đúng
 // lỗi "lệnh lặp 46 lần" đã trị ở §12.3. Ngược lại KHOA thì phải giữ: một tầng có nhiều khoa.
+// BẤM VÀO DÒNG → sổ chi tiết bác sĩ (user chốt 2026-08-17). Trước đó dòng chỉ ghi "👨‍⚕️ Tên +2"
+// mà KHÔNG có cách nào biết 2 người kia là ai: chi tiết chỉ có trên THẺ, mà thẻ chỉ dành cho 10
+// phòng nặng nhất viện ⇒ 58/82 phòng có bác sĩ nhưng không tra được (đo 2026-08-17).
+// Dòng nào KHÔNG có dữ liệu bác sĩ thì giữ nguyên là dòng tĩnh (không caret, không bấm được) —
+// đừng mời bấm để rồi mở ra khối rỗng.
 function pkRestRow(r, noi) {
   const c = r.dang_cho || 0;
   if (noi === undefined) noi = r.nhom || r.khoa || "";
   const bs = doctorInline(r);
-  return `<div class="room-calm ${levelOf(r)}"><span class="rc-dot"></span>
+  const inner = `<span class="rc-dot"></span>
     <span class="rc-name">${r.name}<span class="rc-noi">${noi}${noi && bs ? " · " : ""}${bs}</span></span>
-    <span class="rc-wait">${c ? fmt(c) + " người" : "✓ không chờ"}</span></div>`;
+    <span class="rc-wait">${c ? fmt(c) + " người" : "✓ không chờ"}</span>`;
+  return bsBox(r, r.bac_si_buoi, L_BS, `room-calm ${levelOf(r)}`, inner);
 }
 function pkOpen(k) { try { return localStorage.getItem("pk_open_" + k) === "1"; } catch (e) { return false; } }
 function pkToggle(k) { try { localStorage.setItem("pk_open_" + k, pkOpen(k) ? "0" : "1"); } catch (e) {} }
@@ -1057,8 +1233,10 @@ function clsRoomCard(r, rank, maxTon, khuLabels) {
     <div class="wait"><span class="wlead"><span class="wnum">${fmt(r.ton_dong)}</span> <small>ca chưa xong</small></span></div>
     <div class="bar"><i style="width:${w}%"></i></div>
     <div class="detail">${cellC}${cellL}</div>
+    ${svcWaitChips(r)}
     ${performerLine(r)}
     ${performerSessionDetail(r)}
+    ${svcDetail(r)}
   </div>`;
 }
 
@@ -1116,13 +1294,51 @@ function clsHotRow(r, rank, khuLabels, maxTon) {
 // Dòng phòng ở phần TRA CỨU (gập mặc định): tên + khoa·tầng + số ca chưa xong.
 // `noi` = chuỗi vị trí ghi trên dòng; bỏ trống thì tự lấy "Khoa · Tầng". Dòng nằm TRONG cụm tầng
 // chỉ cần ghi KHOA (tiêu đề cụm đã nói tầng) — y hệt pkRestRow của tab Phòng khám (§12.8).
+//
+// DÒNG TÌNH TRẠNG (user báo 2026-08-14, ảnh Khu KM tầng 2): dòng cũ chỉ có MỘT mẩu — "18 ca" hoặc
+// "✓ xong" — nên KM2.05 (làm 140 ca) và KM3.17 (làm 1 ca) hiện Y HỆT NHAU. Mất cả KHỐI LƯỢNG lẫn
+// KHÂU ĐANG ĐỌNG, đúng lúc điều phối viên cần biết "phòng này đang kẹt ở tiếp nhận hay ở trả kết quả".
+// Chỉ in khâu CÓ SỐ (bỏ mẩu 0): in "0 chờ · 0 đang làm" ở 15/17 phòng đã xong là nhiễu thuần tuý.
+//
+// ⚠️ ĐẶT Ở CỘT TRÁI, KHÔNG đặt cạnh con số bên phải (đã đo, đừng làm lại): `.rc-wait` mang
+// `white-space:nowrap; flex:none` nên nó KHÔNG CO ĐƯỢC — nhét chuỗi ~130px vào đó thì tên phòng dài
+// bị bóp còn ~100px và vỡ thành 5 dòng: "Siêu âm - P3 (HIẾM MUỘN)(Tăng cường)" phình 83px → 152px,
+// 20/42 dòng cao thêm. Cột trái vốn đã tự xuống dòng (rc-noi) nên đặt ở đây không bóp gì cả.
+// Mỗi mẩu bọc `.nb` để không bị ngắt giữa chừng ("5 đang / làm" đọc vấp — cùng lý do ghi ở style.css).
+function clsTinhTrang(r) {
+  const cho = r.cho_tiep_nhan || 0, lam = r.da_tiep_nhan || 0;
+  const xong = (r.da_co_kq || 0) + (r.da_xem_kq || 0), bo = r.bo_qua || 0;
+  const b = [];
+  if (r.ton_dong) {                       // còn việc → nói rõ đọng ở khâu nào
+    if (cho) b.push(`${fmt(cho)} chờ`);
+    if (lam) b.push(`${fmt(lam)} đang làm`);
+    if (xong) b.push(`${fmt(xong)} xong`);
+  } else if (xong) {                      // xong hết → chỉ còn khối lượng đã làm ("✓ xong" đã ở trên)
+    b.push(`${fmt(xong)} ca`);
+  }
+  if (bo) b.push(`${fmt(bo)} bỏ qua`);
+  return b.map(x => `<span class="nb">${x}</span>`).join(" · ");
+}
 function clsRestRow(r, noi) {
   const ton = r.ton_dong || 0;
   if (noi === undefined) noi = r.nhom || r.khoa || "";
   const ng = performerInline(r);
-  return `<div class="room-calm ${clsLevelOf(r)}"><span class="rc-dot"></span>
-    <span class="rc-name">${r.name}<span class="rc-noi">${noi}${noi && ng ? " · " : ""}${ng}</span></span>
-    <span class="rc-wait">${ton ? fmt(ton) + " ca" : "✓ xong"}</span></div>`;
+  const tt = clsTinhTrang(r);
+  // Tooltip ghi ĐỦ 5 trạng thái HIS (kể cả mẩu bằng 0) — dòng chỉ in mẩu có số, ai cần tra thì rê chuột.
+  const tip = `${r.name} — ${fmt(r.cho_tiep_nhan || 0)} chờ tiếp nhận · ${fmt(r.da_tiep_nhan || 0)}`
+    + ` đã tiếp nhận · ${fmt(r.da_co_kq || 0)} đã có kết quả · ${fmt(r.da_xem_kq || 0)} đã xem kết quả`
+    + ` · ${fmt(r.bo_qua || 0)} bỏ qua · tổng ${fmt(r.tong || 0)} ca`;
+  // KHỐI MỞ RỘNG (user chốt 2026-08-17): loại kỹ thuật đang chờ + ai đang làm + chi tiết đủ loại.
+  // ⚠️ Phải có ở DÒNG GỌN, không chỉ ở thẻ: ngưỡng đỏ tab này là 40 ca (CLS_RED) nên giờ thường
+  // KHÔNG phòng siêu âm nào lên thẻ — đo mốc 08:50: phòng nặng nhất 23 ca ⇒ nếu chỉ làm ở thẻ thì
+  // đúng những phòng user hỏi lại là những phòng không có gì. Chi tiết bác sĩ cũng vậy: dòng gọn
+  // trước đây chỉ có "👨‍⚕️ Tên +1", bấm không ra được ai làm buổi nào (thẻ tab Phòng khám thì có).
+  const more = svcWaitChips(r) + performerSessionDetail(r) + svcDetail(r);
+  return `<div class="room-calm ${clsLevelOf(r)}" title="${esc(tip)}"><span class="rc-dot"></span>
+    <span class="rc-name">${r.name}<span class="rc-noi">${noi}${noi && ng ? " · " : ""}${ng}</span>${
+      tt ? `<span class="rc-tt">${tt}</span>` : ""}</span>
+    <span class="rc-wait">${ton ? fmt(ton) + " ca" : "✓ xong"}</span>${
+      more ? `<div class="rc-more">${more}</div>` : ""}</div>`;
 }
 
 function clsOpen(key) {
@@ -1136,7 +1352,18 @@ function renderClsRooms(cls) {
   const wrap = document.getElementById("cls-rooms");
   if (!wrap) return;
   const rooms = (cls && cls.rooms) || [];
-  if (!rooms.length) { wrap.innerHTML = ""; return; }
+  // Trống thì KHÔNG được im lặng (luật 5): nói rõ là do bộ lọc khoa hay do chưa có số. Trang trắng
+  // trơn trông y hệt "mất dữ liệu" — mà đây là ca dễ xảy ra nhất khi HIS đổi tên khoa.
+  if (!rooms.length) {
+    const kf = (cls && cls.khoa_filter) || null;
+    const gl = (cls && cls.phong_giu_lai) || [];
+    wrap.innerHTML = kf
+      ? `<p class="empty">Không có phòng nào thuộc <b>${kf.concat(gl).join(" · ")}</b> trong phạm vi
+           đang xem. Nếu HIS vừa đổi tên khoa thì sửa <code>KHOA_HIEN_THI_CLS</code> /
+           <code>PHONG_GIU_LAI_CLS</code> trong <code>scraper/dashboard_flow.py</code>.</p>`
+      : "";
+    return;
+  }
 
   const nong = rooms.filter(r => clsLevelOf(r) === "red")
                     .sort((a, b) => (b.ton_dong || 0) - (a.ton_dong || 0));
@@ -1756,8 +1983,8 @@ function renderSvcTab(key, svc) {
   if (scEl) {
     scEl.hidden = !cls.svc_toan_vien;
     scEl.innerHTML = cls.svc_toan_vien
-      ? `⚠️ Bảng này tính <b>toàn viện (mọi khu)</b> — khác phạm vi với phần phòng ở trên.
-         HIS chỉ trả số theo dịch vụ, không tách được theo khu.` : "";
+      ? `⚠️ Bảng này tính <b>toàn viện — mọi khu, mọi khoa</b> — khác phạm vi với phần phòng ở trên.
+         HIS chỉ trả số theo dịch vụ, không tách được theo khu/khoa.` : "";
   }
 
   const tonDong = (t.cho_tiep_nhan || 0) + (t.da_tiep_nhan || 0);
