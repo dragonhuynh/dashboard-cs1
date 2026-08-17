@@ -87,8 +87,17 @@
   /* Mọi lời gọi dữ liệu đều đi qua đây → chỉ MỘT chỗ xử lý "bị đá khỏi phiên". */
   function xuLyMaLoi(kq) {
     if (kq.ma === 409) { hienBiDay(kq.data && kq.data.loi); return true; }
+    /* Chặn vì MẠNG — khác hẳn 401/409: người dùng không sai mật khẩu, cũng
+       không bị ai đá ra, họ chỉ đang ở sai mạng. KHÔNG gọi ketThucPhien():
+       giữ token để rớt WiFi viện sang 4G rồi cắm lại là chạy tiếp. */
+    if (laChanIP(kq)) { hienChanMang(kq.data); return true; }
     if (kq.ma === 401) { ketThucPhien(); hienDangNhap(kq.data && kq.data.loi); return true; }
     return false;
+  }
+  /* 403 có hai nghĩa khác nhau — `ma_loi` phân biệt "sai mạng" với "tài khoản
+     không có quyền xem tab này". Đừng gộp. */
+  function laChanIP(kq) {
+    return kq.ma === 403 && kq.data && kq.data.ma_loi === "ip";
   }
 
   function layDuLieu(loai) {
@@ -177,6 +186,9 @@
     baoLoi("");
     goiAPI("/api/login", { method: "POST", body: { u: u, p: p } }).then(function (kq) {
       nut.disabled = false; nut.textContent = "Đăng nhập →";
+      /* Mật khẩu ĐÚNG nhưng sai mạng: hiện hẳn màn chặn thay vì một dòng báo
+         lỗi trong form — để người dùng thôi gõ lại mật khẩu lần thứ ba. */
+      if (laChanIP(kq)) { hienChanMang(kq.data); return; }
       if (!kq.ok) { baoLoi((kq.data && kq.data.loi) || "Đăng nhập không thành công."); return; }
       luu.set(K_TOKEN, kq.data.token);
       luu.set(K_USER, kq.data.user);
@@ -227,7 +239,53 @@
     document.getElementById("auth-again").addEventListener("click", function () { location.reload(); });
   }
 
+  /* MÀN CHẶN VÌ MẠNG (403 · ma_loi="ip") — xem TRIEN_KHAI/buoc9_chan_theo_ip.md
+     Ba việc bắt buộc, thiếu cái nào cũng hỏng:
+       1. XOÁ dữ liệu khỏi trang. Phủ lớp che là chưa đủ — xem chú thích ở
+          xoaDuLieuTrenTrang().
+       2. KHÔNG hiện ô đăng nhập. Người dùng đang ở sai mạng; bày form mật khẩu
+          ra là để họ gõ đi gõ lại rồi tưởng mình nhớ nhầm mật khẩu.
+       3. TỰ DÒ LẠI. Cắm lại mạng viện là trang tự sống, không cần ai chỉ. */
+  var timerChan = null;
+  function ngungDoLai() { if (timerChan) { clearInterval(timerChan); timerChan = null; } }
+
+  function hienChanMang(d) {
+    if (timerTim) { clearInterval(timerTim); timerTim = null; }
+    xoaDuLieuTrenTrang();
+    var coToken = !!(luu.get(K_TOKEN) && luu.get(K_USER));
+    var ip = (d && d.ip) || "";
+    overlay().innerHTML =
+      '<div class="auth-card auth-kick">'
+      + '<div class="auth-kick-ico">🚧</div>'
+      + "<h2>Không truy cập được từ mạng này</h2>"
+      + "<p>Tài khoản của Anh/Chị chỉ dùng được khi máy đang ở trong mạng của bệnh viện.</p>"
+      /* In IP của CHÍNH MÁY HỌ là cố ý: họ tra ở trang nào cũng ra, không lộ gì,
+         mà bộ phận CNTT nhận báo lỗi là có ngay con số để tra.
+         ⚠️ TUYỆT ĐỐI không in danh sách IP được phép — đó mới là thông tin nội bộ. */
+      + (ip ? '<p style="font-size:13px">Địa chỉ mạng đang dùng: <b>' + esc(ip) + "</b></p>" : "")
+      + '<p style="color:#7c91a6;font-size:12.5px">Hãy kết nối lại mạng của bệnh viện — '
+      + "trang sẽ tự hiện lại. Nếu cần được cấp quyền truy cập từ ngoài, "
+      + "báo bộ phận Công nghệ thông tin kèm địa chỉ trên.</p>"
+      + '<button type="button" class="auth-btn" id="auth-chan-thu">Kiểm tra lại</button>'
+      + "</div>";
+    document.getElementById("auth-chan-thu").addEventListener("click", doLai);
+
+    ngungDoLai();                       // gọi lại nhiều lần cũng không chồng timer
+    if (coToken) timerChan = setInterval(doLai, 30000);
+
+    function doLai() {
+      if (!coToken) { ngungDoLai(); hienDangNhap(""); return; }
+      goiAPI("/api/session").then(function (kq) {
+        // Panel vừa bị xoá trắng → nạp lại trang chứ không vẽ tại chỗ.
+        if (kq.ok) { ngungDoLai(); location.reload(); return; }
+        if (laChanIP(kq)) return;       // vẫn ở ngoài mạng — chờ vòng sau, đừng đổi màn hình
+        ngungDoLai(); ketThucPhien(); hienDangNhap(kq.data && kq.data.loi);
+      });
+    }
+  }
+
   function ketThucPhien() {
+    ngungDoLai();
     luu.xoa(K_TOKEN); luu.xoa(K_USER); phien = null;
     if (timerTim) { clearInterval(timerTim); timerTim = null; }
     xoaDuLieuTrenTrang();
@@ -405,6 +463,9 @@
         vaoUngDung();
       } else if (kq.ma === 409) {
         hienBiDay(kq.data && kq.data.loi);
+      } else if (laChanIP(kq)) {
+        // F5 khi đang ở ngoài mạng viện: giữ token, đừng bắt đăng nhập lại.
+        hienChanMang(kq.data);
       } else {
         ketThucPhien();
         hienDangNhap(kq.ma === 0 ? (kq.data && kq.data.loi) : "");
