@@ -1288,27 +1288,47 @@ function clsSumBits(list, st) {
   return bits.join(" · ");
 }
 
-// Thẻ lớn 1 phòng CĐHA — CHỈ dùng cho phòng phải can thiệp ngay (đỏ). rank = hạng TOÀN VIỆN.
-// maxTon = mốc chuẩn hóa thanh (phòng nặng nhất viện) → so trực tiếp được giữa các thẻ.
+// Thẻ 1 phòng CĐHA — dùng cho MỌI phòng, kể cả phòng đã xong hết (user chốt 2026-08-17: áp cùng
+// một khuôn cho "phòng khám và phòng siêu âm, phòng của khoa Chẩn đoán hình ảnh"). Trước đây chỉ
+// phòng ùn nặng (≥ CLS_RED = 40 ca) mới lên thẻ, phần còn lại rút thành dòng gọn `clsRestRow` —
+// mà ngưỡng đỏ tab này cao nên giờ thường KHÔNG phòng siêu âm nào chạm ngưỡng (đo 14/08: phòng
+// nặng nhất 23 ca), tức đúng những phòng user đang hỏi lại là những phòng bày ít thông tin nhất.
+// Nay mọi phòng cùng khuôn thẻ, chỉ khác MÀU: xanh = ổn định · cam = cần theo dõi · đỏ = ùn nặng.
+//  • rank: chỉ phòng ùn nặng mới có (hạng TOÀN VIỆN trong nhóm đỏ) → phòng cam/xanh không in "#".
+//  • locOverride: thẻ nằm trong cụm TẦNG rồi thì chỉ ghi KHOA (tiêu đề cụm đã nói tầng).
 // KHÔNG có dòng lệnh "→ …" trên thẻ: lệnh gần như giống nhau ở mọi phòng, lặp hàng chục lần thì
 // nó thành nhiễu chứ không còn là lệnh. Lệnh nằm DUY NHẤT ở dải hành động phía trên.
-function clsRoomCard(r, rank, maxTon, khuLabels) {
+function clsRoomCard(r, rank, maxTon, khuLabels, locOverride) {
+  const lv = clsLevelOf(r);
+  const tag = { red: "⛔ Ùn nặng", amber: "⚠️ Cần theo dõi", green: "✓ Ổn định" };
   const cho = r.cho_tiep_nhan || 0, lam = r.da_tiep_nhan || 0;
+  const xong = (r.da_co_kq || 0) + (r.da_xem_kq || 0), bo = r.bo_qua || 0;
   const w = Math.round((r.ton_dong || 0) / Math.max(1, maxTon) * 100);
   const bnCho = cho >= lam;                 // nút thắt = khâu đọng nhiều hơn → tô nổi
   const cellC = `<span class="d-cell${bnCho && cho > 0 ? " bottleneck" : ""}"><span class="d-lbl">Chờ tiếp nhận</span>${bnum(cho)}</span>`;
   const cellL = `<span class="d-cell${!bnCho && lam > 0 ? " bottleneck" : ""}"><span class="d-lbl">Đang làm</span>${bnum(lam)}</span>`;
-  // Thẻ nằm ngoài phân cấp khu → phải TỰ nói vị trí, nếu không biết nặng mà không biết đi đâu.
+  // Ô thứ 3 = KHỐI LƯỢNG ĐÃ LÀM. Bỏ nó thì phòng làm 140 ca và phòng làm 1 ca hiện Y HỆT NHAU khi
+  // cùng đã xong — đúng lỗi user báo 14/08 ở dòng gọn; dòng gọn nay không còn nên thông tin đó phải
+  // lên thẻ. Song song với ô "Đã khám" của thẻ tab Phòng khám.
+  const cellX = `<span class="d-cell done"><span class="d-lbl">Đã xong</span>${bnum(xong)}</span>`;
+  // Vị trí: trong cụm tầng thì caller truyền sẵn chuỗi chỉ có KHOA; ngoài cụm thì tự ghi "Khu · Tầng".
   // Nhãn khu phải lấy từ bảng của CHÍNH tab CĐHA: tab Phòng khám không có phòng ở Khu A nên
   // bảng nhãn của nó thiếu 'Nhà A' → tra nhầm bảng sẽ rớt về chuỗi thô "Nhà A".
   const tang = String(r.nhom || "").split(" · ")[1];
-  const noi = [(khuLabels && khuLabels[r.khu]) || r.khu, tang].filter(Boolean).join(" · ");
-  return `<div class="room ${clsLevelOf(r)}">
-    <div class="name">${r.name} <span class="rank">#${rank}</span></div>
-    <div class="room-noi">${noi}</div>
+  const noi = locOverride !== undefined ? locOverride
+            : [(khuLabels && khuLabels[r.khu]) || r.khu, tang].filter(Boolean).join(" · ");
+  // Tooltip ghi ĐỦ 5 trạng thái HIS kể cả mẩu bằng 0 — thẻ chỉ bày mẩu có nghĩa, ai cần tra thì rê chuột.
+  const tip = `${r.name} — ${fmt(cho)} chờ tiếp nhận · ${fmt(lam)} đã tiếp nhận`
+    + ` · ${fmt(r.da_co_kq || 0)} đã có kết quả · ${fmt(r.da_xem_kq || 0)} đã xem kết quả`
+    + ` · ${fmt(bo)} bỏ qua · tổng ${fmt(r.tong || 0)} ca`;
+  return `<div class="room ${lv}" title="${esc(tip)}">
+    <div class="name">${r.name}
+      <span class="rank"><span class="rstat ${lv}">${tag[lv]}</span>${rank ? ` #${rank}` : ""}</span></div>
+    ${noi ? `<div class="room-noi">${noi}</div>` : ""}
     <div class="wait"><span class="wlead"><span class="wnum">${fmt(r.ton_dong)}</span> <small>ca chưa xong</small></span></div>
     <div class="bar"><i style="width:${w}%"></i></div>
-    <div class="detail">${cellC}${cellL}</div>
+    <div class="detail">${cellC}${cellL}${cellX}</div>
+    ${bo ? `<div class="detail-sub"><span>${fmt(bo)} ca bỏ qua</span></div>` : ""}
     ${svcWaitChips(r)}
     ${performerLine(r)}
   </div>`;
@@ -1465,9 +1485,11 @@ function renderClsRooms(cls) {
       <div class="lbl">Đã có kết quả</div>
       <div class="sub-metric">${fmt(xong)}/${fmt(t.tong)} ca chỉ định hôm nay</div></div>`;
 
-  // ===== GOM TẤT CẢ THEO KHU, mỗi khu ĐỦ phòng — CÙNG khuôn với tab Phòng khám (user chốt 2026-07-16).
-  // Bỏ mục "phòng cần dồn người" toàn viện: nó rút phòng ùn ra khỏi khu → khu trông thiếu phòng.
-  // Trong khu: phòng ùn nặng (đỏ) = THẺ · còn lại = DÒNG gọn. #N vẫn là hạng TOÀN VIỆN.
+  // ===== GOM TẤT CẢ THEO KHU → TẦNG, mỗi phòng MỘT THẺ ĐẦY ĐỦ — CÙNG khuôn với tab Phòng khám
+  // (user chốt 2026-08-17: "dùng cho cả phòng khám và phòng siêu âm, phòng của khoa Chẩn đoán hình
+  // ảnh"). Trước đây trong khu: phòng ùn nặng = THẺ · còn lại = DÒNG gọn `clsRestRow`. Dòng gọn bỏ
+  // mất nút thắt tách bạch (chờ tiếp nhận / đang làm), ô khối lượng đã xong, và thanh so sánh.
+  // #N vẫn là hạng TOÀN VIỆN trong nhóm ùn nặng.
   const rankOf = new Map(nong.map((r, i) => [r.key, i + 1]));
   const byKhu = {};
   rooms.forEach(r => { const k = r.khu || KHU_KHAC; (byKhu[k] = byKhu[k] || []).push(r); });
@@ -1480,25 +1502,27 @@ function renderClsRooms(cls) {
   order.forEach(khu => {
     const list = byKhu[khu];
     if (!list || !list.length) return;
-    const red = list.filter(r => clsLevelOf(r) === "red").sort((a, b) => (b.ton_dong || 0) - (a.ton_dong || 0));
-    const rest = list.filter(r => clsLevelOf(r) !== "red").sort((a, b) => (b.ton_dong || 0) - (a.ton_dong || 0));
+    const red = list.filter(r => clsLevelOf(r) === "red");   // đếm ở dòng tổng khu
     const label = (cls.khu_labels && cls.khu_labels[khu]) || khu;
     const tot = list.reduce((s, r) => s + (r.ton_dong || 0), 0);
-    const maxT = red.length ? (red[0].ton_dong || 1) : 1;   // thanh chuẩn hóa theo phòng nặng nhất CỦA KHU
+    // Thanh chuẩn hóa theo phòng nặng nhất CỦA KHU, SÀN = CLS_RED (ngưỡng ùn nặng): nay mọi phòng
+    // đều có thẻ, nên khu nhẹ nhất (max 6 ca) mà chuẩn theo chính nó thì phòng 6 ca vẽ thanh ĐẦY
+    // 100% — mắt đọc ra "phòng này ùn" trong khi nó đang xanh. Cùng luật với maxW của tab Phòng khám.
+    const maxT = Math.max(CLS_RED, list.reduce((m, r) => Math.max(m, r.ton_dong || 0), 0));
     html += `<section class="khu-block ${khuSlug(khu)}">
       <div class="khu-head"><span class="khu-tag ${khuSlug(khu)}-tag">${khuTag(khu)}</span>
         <h2 class="khu-title">${label}</h2>
         <span class="khu-sum">${list.length} phòng · <b>${fmt(tot)}</b> ca chưa xong`
       + (red.length ? ` · <b class="k-red">${red.length} ùn nặng</b>` : "")
       + `</span></div>`;
-    if (red.length)
-      html += `<div class="rooms-grid">${red.map(r => clsRoomCard(r, rankOf.get(r.key), maxT, cls.khu_labels)).join("")}</div>`;
-    // TRA CỨU gom theo TẦNG — CÙNG luật với tab Phòng khám (§5b/§12.8): mỗi tầng một hàng riêng,
-    // thứ tự = đường đi thực địa trệt→1→2→3→4, "chưa rõ tầng" xuống CUỐI. Gom theo TẦNG chứ KHÔNG
-    // theo khoa·tầng: một tầng có nhiều khoa → gom theo khoa·tầng thì cùng một tầng bị xé làm 2 cụm.
-    if (rest.length) {
+    // Gom theo TẦNG — CÙNG luật với tab Phòng khám (§5b/§12.8): mỗi tầng một cụm riêng, thứ tự =
+    // đường đi thực địa trệt→1→2→3→4, "chưa rõ tầng" xuống CUỐI. Gom theo TẦNG chứ KHÔNG theo
+    // khoa·tầng: một tầng có nhiều khoa → gom theo khoa·tầng thì cùng một tầng bị xé làm 2 cụm.
+    // ⚠️ MỌI phòng của khu đều vào đây (không tách thẻ ùn nặng lên đầu khu): tách ra thì phòng nặng
+    // nhất bị RÚT KHỎI TẦNG của nó. Trong tầng xếp nặng → nhẹ nên phòng cần can thiệp vẫn đứng đầu.
+    {
       const byTang = new Map();
-      rest.forEach(r => {
+      list.forEach(r => {
         const k = tangNum(tangText(r));
         const kk = (k === null ? "?" : k);
         if (!byTang.has(kk)) byTang.set(kk, []);
@@ -1519,7 +1543,7 @@ function renderClsRooms(cls) {
               <span class="khoa-sum">${g.length} phòng · <b>${fmt(gt)}</b> ca chưa xong`
             + (gRed ? ` · <b class="k-red">${gRed} ùn nặng</b>` : "")
             + `</span></div>
-            <div class="calm-list">${g.map(r => clsRestRow(r, r.khoa || "")).join("")}</div>
+            <div class="rooms-grid">${g.map(r => clsRoomCard(r, rankOf.get(r.key), maxT, cls.khu_labels, r.khoa || "")).join("")}</div>
           </div>`;
         });
     }

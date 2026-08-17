@@ -474,6 +474,8 @@ body.tv .qtrend { font-size: 16px; vertical-align: 8px; }
 .khoa-sum .k-red { color: var(--red); }
 .khoa-sum .k-amber { color: var(--amber); }
 .khoa-block .calm-list { margin-top: 8px; }
+/* Cụm TẦNG nay chứa LƯỚI THẺ (mọi phòng đều là thẻ — user chốt 2026-08-17), không còn dòng gọn. */
+.khoa-block .rooms-grid { margin-top: 8px; }
 /* (Đã bỏ nút "Ẩn/Hiện N phòng còn lại" — user chốt 2026-07-13: phòng đang ổn LUÔN hiện thẳng,
    phải bấm mới thấy là giấu mất phòng, mắt không quét được cả khoa trong 1 lần nhìn.) */
 /* Khối "đang ổn" — dòng gọn 1 hàng, giảm tải thị giác */
@@ -565,6 +567,12 @@ body.tv .dv-sub { font-size: 13px; }
 .room .rstat { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px; }
 .room .rstat.red { color: #fff; background: var(--red); }
 .room .rstat.amber { color: #fff; background: var(--amber); }
+/* Mức ỔN ĐỊNH / CHƯA HOẠT ĐỘNG — có từ 2026-08-17, khi MỌI phòng đều lên thẻ (không còn dòng gọn).
+   ⚠️ KHÔNG tô nền đặc như 2 mức trên: đây KHÔNG phải cảnh báo. Nền đặc xanh lá đứng cạnh thẻ đỏ
+   thì mắt đọc thành "cũng có việc" — chip chỉ cần nói TRẠNG THÁI, còn mức nặng đã do màu viền +
+   màu số lớn nói rồi. Nền nhạt + chữ đậm: #166534 trên #dcfce7 = 7,0:1 (WCAG AA cho chữ 11px). */
+.room .rstat.green { color: #166534; background: #dcfce7; border: 1px solid #bbf7d0; }
+.room .rstat.gray { color: #475569; background: #f1f5f9; border: 1px solid var(--line); font-weight: 600; }
 /* Nút thu gọn phòng chưa hoạt động (chiếm trọn 1 hàng lưới) */
 .rooms-toggle { grid-column: 1 / -1; }
 #rooms-idle-toggle { width: 100%; text-align: left; background: #fff; border: 1px dashed var(--line);
@@ -587,11 +595,14 @@ body.tv .dv-sub { font-size: 13px; }
 /* 3 ô mini-stat đều nhau (nhãn nhỏ trên · số đậm dưới) — sạch, không emoji, quét nhanh */
 .room .detail { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
   margin-top: 2px; font-size: 13px; color: #334155; }
-/* "Đã khám" = bối cảnh (việc phòng ĐÃ giải quyết), không phải việc cần làm → mờ hơn 2 ô hàng đợi,
-   không bao giờ tô nút thắt. Tab CĐHA chỉ có 2 ô → trả về lưới 2 cột. */
+/* "Đã khám" / "Đã xong" = bối cảnh (việc phòng ĐÃ giải quyết), không phải việc cần làm → mờ hơn
+   2 ô hàng đợi, không bao giờ tô nút thắt.
+   ⚠️ ĐÃ BỎ luật `#tab-cls .room .detail { repeat(2, 1fr) }` (2026-08-17): nó viết từ thời thẻ CĐHA
+   chỉ có 2 ô; nay thẻ có thêm ô "Đã xong" nên lưới 2 cột đẩy ô thứ 3 XUỐNG HÀNG RIÊNG, chiếm nửa
+   bề ngang thẻ. Chỉ lộ ra khi CHỤP ẢNH ĐO (đọc code không thấy — luật 8). Cả 2 tab nay 3 ô → dùng
+   chung lưới 3 cột ở trên. */
 .room .detail .d-cell.done .d-lbl, .room .detail .d-cell.done b { color: var(--muted); }
 .room .detail .d-cell.done b { font-size: 15px; font-weight: 700; }
-#tab-cls .room .detail { grid-template-columns: repeat(2, 1fr); }
 /* Cảnh báo hành động trên thẻ (tắc / sắp quá tải) — tín hiệu cần can thiệp NGAY */
 .room .room-alert { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
 .room .ra-badge { font-size: 11.5px; font-weight: 800; color: #fff; background: var(--red);
@@ -655,6 +666,9 @@ body.tv .room .bs-detail { font-size: 15px; }
 .room.amber .detail .d-cell.bottleneck { box-shadow: inset 0 0 0 1.5px var(--amber); }
 .room.red   .detail .d-cell.bottleneck b, .room.red   .detail .d-cell.bottleneck .d-lbl { color: var(--red); }
 .room.amber .detail .d-cell.bottleneck b, .room.amber .detail .d-cell.bottleneck .d-lbl { color: var(--amber); }
+/* Phòng ĐANG ỔN cũng có nút thắt (đọng ở khâu nào) — thông tin thật, giữ. Nhưng chỉ viền xanh nhạt
+   và KHÔNG đổi màu chữ: phòng xanh chiếm đa số, tô đậm như phòng đỏ là dựng lại alarm fatigue. */
+.room.green .detail .d-cell.bottleneck { box-shadow: inset 0 0 0 1.5px #86efac; }
 .room .detail .d-cell.bottleneck b { font-size: 19px; }
 /* Ước tính "tới lượt" — đặt ngay dưới số đang chờ (đọc patient-experience trong 1 nhịp). */
 .room .wait-sub { margin: 0 0 4px; }
