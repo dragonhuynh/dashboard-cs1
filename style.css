@@ -2,6 +2,11 @@
   /* Brand Từ Dũ — LẤY ĐÚNG TỪ logo-BVTD.png: xanh #0076BC, hồng #F16DA7 (xem brand-kit.md) */
   --brand-blue: #0076BC; --brand-blue-dark: #005A92; --brand-blue-50: #E6F3FB;
   --brand-pink: #F16DA7; --brand-pink-dark: #D94E8E; --brand-pink-50: #FDEBF3;
+  /* HỒNG DÙNG CHO CHỮ NHỎ — KHÔNG phải màu mới, là biến thể đủ tương phản của chính --brand-pink.
+     Đo: --brand-pink-dark #D94E8E chỉ 3,87:1 trên nền trắng ⇒ hụt ngưỡng 4,5:1 (WCAG 1.4.3) cho
+     chữ dưới 18pt. #C43F7C đo được 4,83:1. Cùng tiền lệ đã chốt cho --green/--red ở tab Giường
+     (#15803d · #b91c1c). Nền đặc/viền/biểu tượng vẫn dùng --brand-pink như cũ. */
+  --brand-pink-text: #C43F7C;
   /* Trạng thái RAG */
   --red: #dc2626; --red-bg: #fef2f2;
   --amber: #d97706; --amber-bg: #fffbeb;
@@ -1765,12 +1770,21 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 .btr-pk { background: var(--brand-blue-dark); }
 .btr-sa { background: var(--brand-pink); }
 .btr-trong { background: transparent; }
-/* Giờ chưa tới / không đo được: gạch chéo mờ — KHÔNG vẽ cột 0 (số 0 nói dối im lặng). */
+/* BA TRẠNG THÁI Ô — xem khối ghi chú ở `btrPanel` (app.js). Cột đặc = có số · GẠCH CHÉO = chưa đo
+   được · CHẤM = đo được nhưng tỷ số vô nghĩa. Hai hoa văn phải KHÁC HƯỚNG lẫn KHÁC HÌNH (chéo ⇄
+   tròn), không phải chỉ khác mật độ: khác mật độ thì ở cỡ 12px chúng nhoè thành một thứ. */
 .btr-na {
   background: repeating-linear-gradient(45deg, transparent 0 4px, var(--line) 4px 5px);
   border-radius: 3px; opacity: .7;
 }
-.btr-plot .btr-na { height: 100%; }
+.btr-ngoai {
+  background: radial-gradient(circle at 50% 50%, var(--line) 0 1.3px, transparent 1.3px) 0 0 / 6px 6px;
+  border-radius: 3px; opacity: .85;
+}
+.btr-plot .btr-na, .btr-plot .btr-ngoai { height: 100%; }
+/* Ô màu 10px của hai trạng thái rỗng cần VIỀN: hoa văn ở cỡ đó chỉ còn 2–3 nét, không có viền thì
+   chú giải trông như một ô trắng trống trơn. Cột trong biểu đồ thì không cần (đã cao 70–100px). */
+.btr-sw.btr-na, .btr-sw.btr-ngoai { border: 1px solid var(--line); }
 .btr-dinh {
   position: absolute; left: 50%; transform: translateX(-50%); top: -13px;
   font-size: 10px; font-weight: 700; font-style: normal; color: var(--ink); white-space: nowrap;
@@ -1867,6 +1881,19 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 /* Đơn vị trong chú giải ("(người/phòng)") — cùng lý do với .btr-y: chữ 11,5px thì --gray (2,59:1)
    hụt ngưỡng 4,5:1 của WCAG 1.4.3. Dùng --muted (4,76:1). */
 .btr-key em { font-style: normal; color: var(--muted); }
+/* Đơn vị trong chú giải ăn MÀU CHUỖI (xem ghi chú ở `btrPanel`) — nối "màu ⇄ đơn vị" bằng mắt, khỏi
+   bắt người đọc tự ghép. Hồng dùng --brand-pink-text vì đây là chữ 11,5px, xem token ở :root. */
+.btr-key em.btr-tpk { color: var(--brand-blue-dark); font-weight: 600; }
+.btr-key em.btr-tsa { color: var(--brand-pink-text); font-weight: 600; }
+/* Đơn vị ở mốc TRÊN CÙNG của trục dọc — nhỏ hơn con số và không đậm, để số vẫn là thứ đọc trước. */
+.btr-y span i { font-style: normal; font-size: 9.5px; font-weight: 500; color: var(--muted);
+  display: block; line-height: 1.15; }
+/* Đơn vị dưới tên cột trong bảng số. KHÔNG dùng --muted: đo được 4,16:1 trên nền --brand-pink-50,
+   hụt 4,5:1. #4b5563 đo 6,6:1 trên nền đó và 7,6:1 trên trắng. */
+.btr-bang thead .btr-dv {
+  display: block; font-style: normal; font-size: 10px; font-weight: 500;
+  color: #4b5563; white-space: nowrap; margin-top: 1px;
+}
 
 /* Nền 2 màu tách phòng khám ⇄ siêu âm trong bảng số (user chốt 2026-08-17). Dùng đúng token nhạt
    của 2 màu chuỗi trên biểu đồ → bảng và biểu đồ cùng một ngôn ngữ màu, không phát minh màu mới.
@@ -1911,7 +1938,10 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 .btr-nhanmanh .btr-h { padding: 0 10px; }
 .btr-nhanmanh .btr-t { font-size: 15px; }
 .btr-nhanmanh .btr-plot { height: 104px; }
-.btr-nhanmanh .btr-u { color: var(--muted); font-style: italic; }
+/* CHỈ phần GỢI Ý ĐỌC mới in nghiêng ("càng cao càng quá tải"); phần khai đơn vị / cảnh báo hai đơn
+   vị là thông tin, in nghiêng cả cụm thì hai loại nội dung đọc như một. */
+.btr-u i { font-style: italic; }
+.btr-nhanmanh .btr-u { color: var(--muted); }
 
 @media (max-width: 720px) {
   .btr-body { grid-template-columns: 30px 1fr; }
@@ -1970,8 +2000,8 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 .btr-mgio { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; }
 .btr-mc-sa { background: var(--brand-pink); border-radius: 3px 3px 0 0; flex: 1 1 0; min-width: 0; }
 .btr-mgio .btr-mc { flex: 1 1 0; min-width: 0; }
-.btr-cs.sa { color: var(--brand-pink-dark); margin-left: 0; }
-.btr-cs.sa i { color: var(--brand-pink-dark); }
+.btr-cs.sa { color: var(--brand-pink-text); margin-left: 0; }
+.btr-cs.sa i { color: var(--brand-pink-text); }
 .btr-cn { align-items: baseline; }
 /* Thang đo dùng chung — đặt ngay trên lưới, sát nơi dùng. */
 .btr-thang { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; }

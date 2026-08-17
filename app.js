@@ -1910,7 +1910,7 @@ function btrPanel(cfg) {
   // được cho nhau. Thứ so được là NHỊP theo giờ (đỉnh rơi vào lúc nào) — chính là câu hỏi của khối.
   const dvKhac = series.filter(s => s.dv).length > 1 && series[0].dv !== series[1].dv;
   const uHtml = [goi_y ? `<i>${esc(goi_y)}</i>` : "",
-                 dvKhac ? "hai đơn vị khác nhau — so nhịp theo giờ, đừng so chiều cao hai màu"
+                 dvKhac ? "hai đơn vị khác nhau — so nhịp theo giờ, đừng so chiều cao"
                         : (don_vi ? `đơn vị: ${esc(don_vi)}` : "")].filter(Boolean).join(" · ");
   return `<div class="btr-panel${nhan ? " btr-nhanmanh" : ""}">
       <div class="btr-h"><span class="btr-t">${esc(tieu_de)}</span>
@@ -2097,7 +2097,7 @@ function btrBang(bt, V, mot, coSa) {
     <div class="btr-scroll"><table>
       <thead><tr><th rowspan="2">Giờ</th><th colspan="6" class="cpk">Phòng khám</th>
         ${coSa ? `<th colspan="6" class="csa">Phòng siêu âm</th>` : ""}</tr>
-      <tr>${cot("cpk")}${coSa ? cot("csa") : ""}</tr></thead>
+      <tr>${cot("cpk", false)}${coSa ? cot("csa", true) : ""}</tr></thead>
       <tbody>${tr}</tbody></table></div>`;
 }
 
