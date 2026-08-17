@@ -1869,3 +1869,35 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   .btr-nhanmanh { padding: 10px 0 6px; }   /* KHÔNG đệm ngang — xem ghi chú ở .btr-nhanmanh */
   .btr-nhanmanh .btr-h { padding: 0 6px; }
 }
+
+/* ── CHỌN THỜI GIAN: hôm nay · 7 ngày · tháng · từ ngày → đến ngày (user chốt 2026-08-17) ── */
+.btr-chon { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
+.btr-clab { font-size: 12px; color: var(--muted); font-weight: 600; }
+.btr-mode {
+  font: inherit; font-size: 12.5px; padding: 6px 11px; min-height: 34px;
+  border: 1px solid var(--line); background: #fff; color: var(--ink);
+  border-radius: 999px; cursor: pointer;
+}
+.btr-mode:hover { border-color: var(--brand-blue); }
+.btr-mode.on { background: var(--brand-blue-dark); border-color: var(--brand-blue-dark); color: #fff; }
+.btr-mode:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+.btr-range { display: inline-flex; align-items: center; gap: 5px; }
+.btr-range.an { display: none; }
+.btr-range input {
+  font: inherit; font-size: 12.5px; padding: 5px 7px; min-height: 34px;
+  border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: #fff;
+}
+/* Danh sách ngày ĐANG XEM, mỗi ngày kèm THỨ — user chốt: có thứ mới nhìn ra quy luật. */
+.btr-ngays { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-bottom: 10px; }
+.btr-ng {
+  font-size: 11px; color: var(--brand-blue-dark); background: var(--brand-blue-50);
+  border-radius: 5px; padding: 2px 6px; white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  /* Vùng chạm ≥44px (Apple HIG) — cả nút chế độ lẫn ô chọn ngày. */
+  .btr-mode, .btr-range input { min-height: 44px; }
+  .btr-chon { gap: 5px; }
+  .btr-range { width: 100%; }
+  .btr-range input { flex: 1 1 0; min-width: 0; }
+}

@@ -1715,7 +1715,9 @@ function btrGop(bt, ngays) {
              giai_toa: ty(cho, xong) };
   };
   const cum = (bt.pk.cum || []).map((cm, j) => ({ ...cm, mo: gop(x => (x.cum || [])[j]) }));
-  return { pk: { ...ben("pk"), cum }, sa: ben("sa"), n_ngay: ls.length,
+  // `gio` đi kèm để V tự đủ dùng — btrGioHien()/btrBang() nhận V, không được buộc phải cầm thêm
+  // `bt` mới biết dải giờ (hai nguồn cho một sự thật là chỗ sinh ra lệch).
+  return { gio: bt.gio, pk: { ...ben("pk"), cum }, sa: ben("sa"), n_ngay: ls.length,
            ngays: ls.map(x => ({ ngay: x.ngay, thu: x.thu })) };
 }
 
@@ -1834,22 +1836,22 @@ function btrLuoi(bt, H) {
 
 // Bảng số — BẮT BUỘC có: trên điện thoại không rê chuột được nên tooltip vô dụng, và người đọc
 // cần con số chính xác chứ không chỉ chiều cao cột (chuẩn tiếp cận: mọi biểu đồ phải có bản bảng).
-function btrBang(bt) {
+function btrBang(bt, V, mot) {
   let tr = "";
   // NỀN 2 MÀU tách hai bên (user chốt 2026-08-17): 12 cột số liền nhau thì mắt không biết cột nào
   // thuộc phòng khám, cột nào thuộc siêu âm. Nền dùng ĐÚNG token nhạt của 2 màu chuỗi trên biểu đồ
   // (--brand-blue-50 ⇄ --brand-pink-50) → bảng và biểu đồ nói cùng một ngôn ngữ màu.
   const o = (s, i) => {
     const c = s === "pk" ? "cpk" : "csa";
-    return `<td class="${c}">${btrSo(bt[s].mo[i])}</td>`
-      + `<td class="${c}">${btrSo(bt[s].cho[i])}</td>`
-      + `<td class="${c}">${btrSo(bt[s].xong[i])}</td>`
-      + `<td class="${c} btr-r">${btrSo(bt[s].moi_phong[i], true)}</td>`
-      + `<td class="${c} btr-r">${btrSo(bt[s].nang_suat[i], true)}</td>`
-      + `<td class="${c} btr-r">${btrSo(bt[s].giai_toa[i], true)}</td>`;
+    return `<td class="${c}">${btrSo(V[s].mo[i], !mot)}</td>`
+      + `<td class="${c}">${btrSo(V[s].cho[i], !mot)}</td>`
+      + `<td class="${c}">${btrSo(V[s].xong[i], !mot)}</td>`
+      + `<td class="${c} btr-r">${btrSo(V[s].moi_phong[i], true)}</td>`
+      + `<td class="${c} btr-r">${btrSo(V[s].nang_suat[i], true)}</td>`
+      + `<td class="${c} btr-r">${btrSo(V[s].giai_toa[i], true)}</td>`;
   };
   bt.gio.forEach((h, i) => {
-    if (bt.pk.mo[i] == null && bt.pk.cho[i] == null) return;
+    if (V.pk.mo[i] == null && V.pk.cho[i] == null) return;
     tr += `<tr><th>${h}h</th>${o("pk", i)}${o("sa", i)}</tr>`;
   });
   const cot = (c) => `<th class="${c}">Phòng mở</th><th class="${c}">Đang chờ</th>
@@ -1917,12 +1919,41 @@ function btrNhanDinh(bt, V) {
       ${co.map(k => esc(k.khu_nhan)).join(" · ")}. Tức <b>${nPk}/${tong} phòng khám</b>
       phải gửi người bệnh sang tòa khác để siêu âm.`);
   }
-  const np = nang(bt.pk, "người"), ns = nang(bt.sa, "ca");
+  const np = nang(V.pk), ns = nang(V.sa);
   if (np) b.push(`Phòng khám nặng nhất lúc <b>${np.gio}h</b>: ${btrSo(np.v, true)} người/phòng `
-    + `(${np.mo} phòng mở).`);
+    + `(${btrSo(np.mo, true)} phòng mở).`);
   if (ns) b.push(`Siêu âm nặng nhất lúc <b>${ns.gio}h</b>: ${btrSo(ns.v, true)} ca/phòng `
-    + `(chỉ ${ns.mo} phòng mở).`);
+    + `(chỉ ${btrSo(ns.mo, true)} phòng mở).`);
   return b.length ? `<ul class="btr-nd">${b.map(x => `<li>${x}</li>`).join("")}</ul>` : "";
+}
+
+// Thanh chọn thời gian + danh sách ngày CÓ KÈM THỨ (user chốt: có thứ mới thấy quy luật).
+function btrThanhChon(bt, ngays) {
+  const ls = bt.lich_su || [];
+  if (ls.length < 2) return "";      // 1 ngày thì không có gì để chọn
+  const ch = btrDocChon();
+  const het = ls.map(x => x.ngay);
+  const nut = (loai, nhan, tip) => `<button type="button" class="btr-mode`
+    + `${ch.loai === loai ? " on" : ""}" data-btr-mode="${loai}" title="${esc(tip)}">${nhan}</button>`;
+  const cuoi = het[het.length - 1];
+  const nThang = het.filter(d => d.slice(0, 7) === cuoi.slice(0, 7)).length;
+  const dsNgay = ls.filter(x => ngays.includes(x.ngay)).map(x =>
+    `<span class="btr-ng" title="${esc(BTR_THU_DAI[x.thu] + " " + x.ngay)}">`
+    + `${BTR_THU[x.thu]} ${x.ngay.slice(8, 10)}/${x.ngay.slice(5, 7)}</span>`).join("");
+  return `<div class="btr-chon">
+      <span class="btr-clab">Xem:</span>
+      ${nut("hom_nay", "Hôm nay", "Chỉ ngày mới nhất có số liệu")}
+      ${nut("7ngay", "7 ngày gần nhất", "Trung vị 7 ngày có số liệu gần nhất")}
+      ${nut("thang", `Tháng này (${nThang} ngày)`, "Trung vị các ngày trong tháng hiện tại")}
+      ${nut("tu_chon", "Từ ngày → đến ngày", "Tự chọn khoảng ngày")}
+      <span class="btr-range${ch.loai === "tu_chon" ? "" : " an"}">
+        <input type="date" id="btr-tu" min="${het[0]}" max="${cuoi}"
+               value="${ch.tu || het[Math.max(0, het.length - 7)]}">
+        <span>→</span>
+        <input type="date" id="btr-den" min="${het[0]}" max="${cuoi}" value="${ch.den || cuoi}">
+      </span>
+    </div>
+    <div class="btr-ngays"><span class="btr-clab">${ngays.length} ngày:</span>${dsNgay}</div>`;
 }
 
 function renderBoTri(bt) {
@@ -1936,39 +1967,53 @@ function renderBoTri(bt) {
     if (sub) sub.textContent = "chưa đủ số liệu trong ngày";
     return;
   }
-  const dp = bt.dinh.pk, ds = bt.dinh.sa;
+  // CHỌN THỜI GIAN: gộp các ngày được chọn thành MỘT hồ sơ ngày điển hình (trung vị theo giờ).
+  // `bt.pk/bt.sa` của scraper chỉ là hôm nay — mọi thứ vẽ ra từ nay đọc `V`, đừng đọc `bt` nữa,
+  // kẻo chọn khoảng ngày mà biểu đồ vẫn vẽ hôm nay (mâu thuẫn ngay trên một màn hình).
+  const ngays = btrNgayChon(bt);
+  const V = btrGop(bt, ngays.length ? ngays : [bt.ngay]);
+  const mot = V.n_ngay <= 1;
+  const ip = V.pk.cho.reduce((b, v, i) => (v != null && (b < 0 || v > V.pk.cho[b])) ? i : b, -1);
+  const is = V.sa.cho.reduce((b, v, i) => (v != null && (b < 0 || v > V.sa.cho[b])) ? i : b, -1);
+  const dp = ip < 0 ? null : bt.gio[ip], ds = is < 0 ? null : bt.gio[is];
   if (sub) {
     sub.textContent = (dp != null && ds != null && dp !== ds)
       ? `đỉnh ${dp}h ⇄ ${ds}h — lệch ${Math.abs(ds - dp)} giờ`
       : `${bt.pk.n_phong} phòng khám ⇄ ${bt.sa.n_phong} phòng siêu âm`;
   }
-  const ngay = String(bt.ngay || "").split("-").reverse().join("/");
-  const dodo = bt.gio_dang_chay != null
+  const nDau = ngays[0] || bt.ngay, nCuoi = ngays[ngays.length - 1] || bt.ngay;
+  const dmy = (s) => String(s || "").split("-").reverse().join("/");
+  const dodo = (mot && bt.gio_dang_chay != null && nCuoi === bt.ngay)
     ? ` · <span class="btr-canh">giờ ${bt.gio_dang_chay}h đang chạy dở nên chưa tính</span>` : "";
+  const pham_vi = mot
+    ? `Ngày <b>${esc(dmy(nCuoi))}</b>${nCuoi === bt.ngay && bt.gio_chot != null
+        ? `, số liệu tới <b>${bt.gio_chot}h</b>` : ""}${dodo}.`
+    : `<b>Trung vị ${V.n_ngay} ngày</b> ${esc(dmy(nDau))} – ${esc(dmy(nCuoi))} — mỗi khung giờ lấy
+       giá trị giữa của các ngày, nên một ngày bất thường không kéo lệch cả biểu đồ.`;
   // Cắt khoảng giờ chưa tới ở hai đầu — xem btrGioHien(). Mọi panel + trục giờ phải dùng CHUNG
   // một dải giờ, nếu không các cột lệch nhau và small multiples mất tác dụng.
-  const H = btrGioHien(bt), G = H.gio;
+  const H = btrGioHien(V), G = H.gio;
   const c = (a) => (a || []).slice(H.lo, H.hi + 1);
   sec.innerHTML = `
+    ${btrThanhChon(bt, ngays)}
     <div class="btr-lead">
       <p class="btr-dn"><b>Phòng đang hoạt động</b> = phòng <b>có bác sĩ làm việc trong phòng</b>,
-        tính theo khoảng từ ca đầu đến ca cuối của từng người trong buổi.
-        Ngày <b>${esc(ngay)}</b>, số liệu tới <b>${bt.gio_chot}h</b>${dodo}.</p>
-      ${btrNhanDinh(bt)}
+        tính theo khoảng từ ca đầu đến ca cuối của từng người trong buổi. ${pham_vi}</p>
+      ${btrNhanDinh(bt, V)}
     </div>
     ${btrPanel({
       tieu_de: "Mỗi phòng đang mở gánh bao nhiêu", gio: G, le: true, nhan: true,
       don_vi: "càng cao càng quá tải",
-      series: [{ ten: "Phòng khám", dv: "người/phòng", cls: "btr-pk", arr: c(bt.pk.moi_phong) },
-               { ten: "Phòng siêu âm", dv: "ca/phòng", cls: "btr-sa", arr: c(bt.sa.moi_phong) }] })}
+      series: [{ ten: "Phòng khám", dv: "người/phòng", cls: "btr-pk", arr: c(V.pk.moi_phong) },
+               { ten: "Phòng siêu âm", dv: "ca/phòng", cls: "btr-sa", arr: c(V.sa.moi_phong) }] })}
     ${btrPanel({
-      tieu_de: "Số phòng đang hoạt động", don_vi: BTR_DV.phong, gio: G,
-      series: [{ ten: "Phòng khám", cls: "btr-pk", arr: c(bt.pk.mo) },
-               { ten: "Phòng siêu âm", cls: "btr-sa", arr: c(bt.sa.mo) }] })}
+      tieu_de: "Số phòng đang hoạt động", don_vi: BTR_DV.phong, gio: G, le: !mot,
+      series: [{ ten: "Phòng khám", cls: "btr-pk", arr: c(V.pk.mo) },
+               { ten: "Phòng siêu âm", cls: "btr-sa", arr: c(V.sa.mo) }] })}
     ${btrPanel({
-      tieu_de: "Số người đang chờ", gio: G,
-      series: [{ ten: "Chờ khám", dv: "người", cls: "btr-pk", arr: c(bt.pk.cho) },
-               { ten: "Siêu âm chưa xong", dv: "ca", cls: "btr-sa", arr: c(bt.sa.cho) }] })}
+      tieu_de: "Số người đang chờ", gio: G, le: !mot,
+      series: [{ ten: "Chờ khám", dv: "người", cls: "btr-pk", arr: c(V.pk.cho) },
+               { ten: "Siêu âm chưa xong", dv: "ca", cls: "btr-sa", arr: c(V.sa.cho) }] })}
     <div class="btr-body"><div class="btr-y"></div>
       <div class="btr-axis">${G.map(h => `<span>${h}h</span>`).join("")}</div></div>
     <p class="btr-axis-t">Khung giờ trong ngày${H.lo > 0 || H.hi < bt.gio.length - 1
@@ -1976,9 +2021,28 @@ function renderBoTri(bt) {
     <h3 class="btr-h3">Phòng khám hoạt động theo từng khu · từng tầng</h3>
     <p class="btr-note">Mỗi ô là một tầng, dùng chung một thang đo nên so được tầng này với tầng
       kia. Số bên phải tên tầng = <b>số phòng cùng hoạt động lúc cao nhất / tổng số phòng</b>.</p>
-    ${btrLuoi(bt, H)}
-    ${btrBang(bt)}`;
+    ${btrLuoi(V, H)}
+    ${btrBang(bt, V, mot)}`;
 }
+
+// Bấm chọn chế độ / đổi ngày → vẽ lại. Uỷ quyền sự kiện vì khối được dựng lại mỗi vòng 5 phút.
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-btr-mode]");
+  if (!b) return;
+  const ch = btrDocChon();
+  btrLuuChon({ ...ch, loai: b.dataset.btrMode });
+  const d = window.DASHBOARD_DATA;
+  if (d && d.cls) renderBoTri(d.cls.bo_tri);
+});
+document.addEventListener("change", (e) => {
+  if (e.target.id !== "btr-tu" && e.target.id !== "btr-den") return;
+  const tu = (document.getElementById("btr-tu") || {}).value;
+  const den = (document.getElementById("btr-den") || {}).value;
+  // Chọn ngược (từ > đến) thì tự đảo, đừng trả về danh sách rỗng rồi để trang trắng (luật 5).
+  btrLuuChon({ loai: "tu_chon", tu: tu > den ? den : tu, den: tu > den ? tu : den });
+  const d = window.DASHBOARD_DATA;
+  if (d && d.cls) renderBoTri(d.cls.bo_tri);
+});
 
 // Wrapper 2 tab dịch vụ — cùng code, khác cfg.
 // CĐHA có THÊM khối phòng (renderClsRooms chạy SAU → nắm dải hành động + huy hiệu tab, xem ghi chú trong hàm).
