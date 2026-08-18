@@ -2163,11 +2163,16 @@ function btrNhanDinh(bt, V) {
   };
   const ip = dinhCua(V.pk.cho), is = dinhCua(V.sa.cho);
   const dp = ip < 0 ? null : bt.gio[ip], ds = is < 0 ? null : bt.gio[is];
+  // ⚠️ HAI LOẠI "ĐỈNH", phải gọi tên khác nhau (user báo 18/08): bản trước in "đỉnh siêu âm 10h" ở
+  // gạch đầu dòng 1 rồi "siêu âm nặng nhất lúc 11h" ở gạch đầu dòng 4 — người điều phối đọc ra HAI
+  // giờ cho CÙNG một bên mà không biết tin giờ nào. Sự thật là hai đại lượng khác nhau:
+  //   · HÀNG ĐỢI đông nhất  = `cho` cao nhất  → khi nào nhiều người chờ nhất
+  //   · MỖI PHÒNG gánh nặng nhất = `cho ÷ mo` → khi nào từng phòng đuối nhất (ít phòng mở hơn)
+  // Nay mỗi gạch đầu dòng mở đầu bằng NHÃN ĐẠI LƯỢNG, và hai bên nằm CÙNG một dòng để so trực tiếp.
   if (dp != null && ds != null) {
-    const lech = ds - dp;
-    b.push(lech === 0
-      ? `Hai bên cùng đạt đỉnh lúc <b>${dp}h</b>.`
-      : `Đỉnh phòng khám <b>${dp}h</b>, đỉnh siêu âm <b>${ds}h</b> — <b>lệch ${Math.abs(lech)} giờ</b>.`);
+    b.push(`<b>Hàng đợi đông nhất:</b> phòng khám <b>${dp}h</b> (${btrSo(V.pk.cho[ip], true)} người)`
+      + ` · siêu âm <b>${ds}h</b> (${btrSo(V.sa.cho[is], true)} ca)`
+      + (ds === dp ? " — cùng giờ." : ` — lệch <b>${Math.abs(ds - dp)} giờ</b>.`));
   }
   // Giờ nặng nhất theo TỶ SỐ (người trên mỗi phòng đang mở) — đó mới là mức chịu tải thật.
   // ⚠️ CHỈ xét GIỜ HOẠT ĐỘNG CHÍNH: cuối buổi còn 3,5 phòng mở với 129 người chờ ra "37,6
@@ -2182,14 +2187,17 @@ function btrNhanDinh(bt, V) {
     const i = dinhCua(o.giai_toa);
     return i < 0 ? null : { gio: bt.gio[i], v: o.giai_toa[i] };
   };
+  const np = nang(V.pk), ns = nang(V.sa);
+  if (np && ns) {
+    b.push(`<b>Mỗi phòng gánh nặng nhất:</b> phòng khám <b>${np.gio}h</b> `
+      + `(${btrSo(np.v, true)} người/phòng, ${btrSo(np.mo, true)} phòng mở)`
+      + ` · siêu âm <b>${ns.gio}h</b> (${btrSo(ns.v, true)} ca/phòng, ${btrSo(ns.mo, true)} phòng mở).`);
+  }
   const tp = tac(V.pk), ts = tac(V.sa);
   if (tp && ts) {
-    const pkTac = tp.v >= ts.v;
-    const A = pkTac ? { t: "Phòng khám", x: tp } : { t: "Siêu âm", x: ts };
-    const B = pkTac ? { t: "siêu âm", x: ts } : { t: "phòng khám", x: tp };
-    b.push(`Nút thắt lâu hơn nằm ở <b>${A.t.toLowerCase()}</b> — ${btrSo(A.x.v, true)} giờ mới `
-      + `giải toả hết hàng (lúc ${A.x.gio}h), so với ${B.t} ${btrSo(B.x.v, true)} giờ `
-      + `(lúc ${B.x.gio}h).`);
+    b.push(`<b>Lâu giải toả nhất:</b> phòng khám <b>${btrSo(tp.v, true)} giờ</b> (lúc ${tp.gio}h)`
+      + ` · siêu âm <b>${btrSo(ts.v, true)} giờ</b> (lúc ${ts.gio}h) — tính theo nhịp làm việc`
+      + ` chính giờ đó.`);
   }
   // BỐ TRÍ KHÔNG GIAN — khu có phòng khám mà KHÔNG có phòng siêu âm. Chuỗi theo giờ không nói được
   // điều này, mà nó lại là vế "bố trí có hợp lý không": người bệnh phải đi sang tòa khác.
@@ -2203,12 +2211,27 @@ function btrNhanDinh(bt, V) {
       ${co.map(k => esc(k.khu_nhan)).join(" · ")}. Tức <b>${nPk}/${tong} phòng khám</b>
       phải gửi người bệnh sang tòa khác để siêu âm.`);
   }
-  const np = nang(V.pk), ns = nang(V.sa);
-  if (np) b.push(`Phòng khám nặng nhất lúc <b>${np.gio}h</b>: ${btrSo(np.v, true)} người/phòng `
-    + `(${btrSo(np.mo, true)} phòng mở).`);
-  if (ns) b.push(`Siêu âm nặng nhất lúc <b>${ns.gio}h</b>: ${btrSo(ns.v, true)} ca/phòng `
-    + `(chỉ ${btrSo(ns.mo, true)} phòng mở).`);
-  return b.length ? `<ul class="btr-nd">${b.map(x => `<li>${x}</li>`).join("")}</ul>` : "";
+  // VIỆC CẦN LÀM — một câu duy nhất, đặt TRÊN mọi con số. Bản trước có 4 gạch đầu dòng cùng trọng
+  // số và KHÔNG câu nào nói "vậy phải làm gì": người điều phối phải tự ghép 4 con số mới ra việc.
+  // ⚠️ Chỉ nói điều SUY THẲNG từ hai giờ đỉnh (R09) — không đoán nguyên nhân, không hứa kết quả.
+  let viec = "";
+  if (dp != null && ds != null) {
+    if (ds > dp) viec = `Khung <b>${ds}h</b> là lúc chuyển người sang <b>siêu âm</b> — siêu âm đông`
+      + ` nhất ở giờ này, còn phòng khám đã qua đỉnh từ ${dp}h (sớm hơn ${ds - dp} giờ).`;
+    else if (ds < dp) viec = `Khung <b>${dp}h</b> cần giữ người ở <b>phòng khám</b> — phòng khám`
+      + ` đông nhất ở giờ này, siêu âm đã qua đỉnh từ ${ds}h.`;
+    else viec = `Hai bên cùng đông nhất lúc <b>${dp}h</b> — khung này <b>không chuyển qua lại`
+      + ` được</b>, phải thêm người cho cả hai.`;
+    if (np && ns) {
+      const sa = ns.v > np.v;
+      viec += ` Ở giờ nặng nhất, mỗi phòng ${sa ? "siêu âm" : "khám"} gánh`
+        + ` <b>${btrSo(sa ? ns.v : np.v, true)} ${sa ? "ca" : "người"}</b>`
+        + ` — nhiều hơn bên kia (${btrSo(sa ? np.v : ns.v, true)}).`;
+    }
+  }
+  const ds_ul = b.length ? `<ul class="btr-nd">${b.map(x => `<li>${x}</li>`).join("")}</ul>` : "";
+  return (viec ? `<p class="btr-viec"><span class="btr-vlab">Điều phối</span>${viec}</p>` : "")
+    + ds_ul;
 }
 
 // Thanh chọn thời gian + danh sách ngày CÓ KÈM THỨ (user chốt: có thứ mới thấy quy luật).
