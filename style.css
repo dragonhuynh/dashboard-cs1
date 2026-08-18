@@ -1751,6 +1751,18 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   border-radius: 6px; padding: 8px 10px;
 }
 .btr-mmn { color: var(--ink); }
+/* VIỆC CẦN LÀM — một câu, đặt TRÊN mọi con số. Bản trước 4 gạch đầu dòng cùng trọng số và không
+   câu nào nói "vậy phải làm gì". Nền nhạt + viền trái, KHÔNG dùng màu RAG (đây là hướng dẫn, không
+   phải cảnh báo — tô đỏ ở đây là dựng lại alarm fatigue của tab CĐHA). */
+.btr-viec {
+  margin: 0 0 10px; padding: 9px 12px; font-size: 14px; line-height: 1.6; color: var(--ink);
+  background: var(--brand-blue-50); border-left: 4px solid var(--brand-blue); border-radius: 0 8px 8px 0;
+}
+.btr-vlab {
+  display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px;
+  background: var(--brand-blue-dark); color: #fff; font-size: 11px; font-weight: 700;
+  letter-spacing: .3px; text-transform: uppercase; vertical-align: 1px;
+}
 .btr-nd { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink); line-height: 1.65; }
 .btr-nd li { margin-bottom: 2px; }
 .btr-empty { font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.6; }
@@ -1772,6 +1784,12 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
   border-bottom: 1px solid var(--line);
 }
 .btr-col { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; }
+/* Cột ĐỈNH — nền mờ loang từ trên xuống, KHÔNG viền: viền tạo mép cứng cắt ngang cột dữ liệu, và
+   ở 15 cột sát nhau thì mép đó đọc thành một cột thứ ba. Loang dần nên không tranh với cột. */
+.btr-dgp { background: linear-gradient(180deg, var(--brand-blue-50), rgba(230, 243, 251, 0)); }
+.btr-dgs { background: linear-gradient(180deg, var(--brand-pink-50), rgba(253, 235, 243, 0)); }
+.btr-dg2 { background: linear-gradient(180deg, #e8eef6, rgba(232, 238, 246, 0)); }
+.btr-dgp, .btr-dgs, .btr-dg2 { border-radius: 5px 5px 0 0; }
 .btr-b {
   position: relative; flex: 1 1 0; min-width: 0; max-width: 12px;
   border-radius: 4px 4px 0 0;   /* đầu dữ liệu bo 4px, chân neo vào đường trục */
@@ -1813,6 +1831,12 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 /* ⚠️ 190px chứ không 150px: ô có CẢ HAI chuỗi (Khu N) vẽ 10 giờ × 2 cột = 20 cột trong một ô —
    ở 150px mỗi cột còn ~5px, nhìn ra vệt sọc chứ không ra biểu đồ. 190px cho cột ~7,5px và desktop
    1440px vẫn xếp được 6 ô/hàng. */
+/* Dòng tổng của KHU — chữ thường, KHÔNG in hoa như tên tòa: nó là câu giải thích, không phải nhãn
+   điều hướng. Xuống dòng riêng trên màn hẹp để tên tòa không bị đẩy vỡ. */
+.btr-ktt { display: block; margin-top: 2px; font-size: 12px; font-weight: 500;
+  text-transform: none; letter-spacing: 0; color: var(--muted); }
+.btr-ksa { color: var(--brand-pink-text); font-weight: 700; }
+.btr-knosa { color: var(--amber); font-weight: 700; }
 .btr-cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
 .btr-cell { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px 8px; background: #fff; }
 .btr-cn { font-size: 13px; font-weight: 600; color: var(--ink); display: flex; gap: 6px; }

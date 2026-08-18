@@ -1928,7 +1928,12 @@ function btrPanel(cfg) {
         ? `<u class="btr-dinh">${btrSo(v, le)}</u>` : "";
       bars += `<i class="btr-b ${s.cls}" style="height:${pc.toFixed(1)}%">${nhan}</i>`;
     });
-    cols += `<div class="btr-col" title="${esc(tip)}">${bars}</div>`;
+    // ĐÁNH DẤU CỘT ĐỈNH bằng nền mờ. Cả khối tồn tại để trả lời "nhịp hai bên có khớp không", mà
+    // bản trước chỉ có NHÃN SỐ trên cột đỉnh ⇒ độ lệch phải ĐỌC ra từ dòng chữ, không NHÌN ra được.
+    // Nền mờ theo màu chuỗi làm khoảng cách giữa hai đỉnh thành một khoảng trống đo được bằng mắt.
+    const dg = (i === dinhIdx[0] ? 1 : 0) + (i === dinhIdx[1] ? 2 : 0);
+    cols += `<div class="btr-col${[" ", " btr-dgp", " btr-dgs", " btr-dg2"][dg]}"`
+          + ` title="${esc(tip)}">${bars}</div>`;
   });
   // ĐƠN VỊ ĂN MÀU CỦA CHÍNH CHUỖI, không để `--muted` như bản trước: cùng một màu xanh mang BA nghĩa
   // qua ba panel (người/phòng · phòng · người) mà đơn vị lại in màu xám trung tính ⇒ mắt không nối
@@ -1958,7 +1963,7 @@ function btrPanel(cfg) {
   // được cho nhau. Thứ so được là NHỊP theo giờ (đỉnh rơi vào lúc nào) — chính là câu hỏi của khối.
   const dvKhac = series.filter(s => s.dv).length > 1 && series[0].dv !== series[1].dv;
   const uHtml = [goi_y ? `<i>${esc(goi_y)}</i>` : "",
-                 dvKhac ? "hai đơn vị khác nhau — so nhịp theo giờ, đừng so chiều cao"
+                 dvKhac ? "hai đơn vị — so nhịp, đừng so chiều cao"
                         : (don_vi ? `đơn vị: ${esc(don_vi)}` : "")].filter(Boolean).join(" · ");
   return `<div class="btr-panel${nhan ? " btr-nhanmanh" : ""}">
       <div class="btr-h"><span class="btr-t">${esc(tieu_de)}</span>
@@ -1990,7 +1995,20 @@ function btrLuoi(bt, H) {
       //    DOM: TABLE → .btr-scroll → .btr-bang → .btr-khu → .btr-khu → .btr-grid. Đọc mã không
       //    thấy — chỉ lộ ra khi đi ngược cây cha để tìm màu nền.
       if (khuTruoc !== null) html += `</div></div>`;
-      html += `<div class="btr-khu"><h4>${esc(c.khu_nhan)}</h4><div class="btr-cells">`;
+      // DÒNG TỔNG CỦA KHU — câu hỏi thật của người điều phối khi nhìn một TÒA là "trong tòa này
+      // siêu âm nằm ở tầng nào". Bản trước tiêu đề khu chỉ có mỗi tên tòa ⇒ phải đọc hết 4–6 ô
+      // rồi tự cộng. Cộng sẵn ở đây, và NÊU TÊN TẦNG có siêu âm để khỏi phải dò tiếp.
+      const oKhu = cum.filter(x => x.khu === c.khu);
+      const nPk = oKhu.reduce((s, x) => s + (x.n_phong || 0), 0);
+      const nSa = oKhu.reduce((s, x) => s + (x.n_phong_sa || 0), 0);
+      const tangSa = oKhu.filter(x => x.n_phong_sa > 0).map(x => x.tang || "chưa rõ tầng");
+      const tomTat = nSa
+        ? `${nPk} phòng khám · <b class="btr-ksa">${nSa} phòng siêu âm</b>`
+          + ` ở ${tangSa.join(" · ")}`
+        : `${nPk} phòng khám · <b class="btr-knosa">không có phòng siêu âm</b>`
+          + ` — người bệnh phải sang tòa khác`;
+      html += `<div class="btr-khu"><h4>${esc(c.khu_nhan)}`
+            + `<span class="btr-ktt">${tomTat}</span></h4><div class="btr-cells">`;
       khuTruoc = c.khu;
     }
     // Có phòng siêu âm ở cụm này không — cụm không có thì scraper xuất chuỗi RỖNG (không phải
@@ -2054,8 +2072,7 @@ function btrLuoi(bt, H) {
   // bao nhiêu ⇒ so được ô này với ô kia nhưng KHÔNG đọc được giá trị của bất kỳ cột nào. Một con số
   // là đủ: cột chạm nóc = bao nhiêu phòng.
   // Đóng nốt .btr-cells + .btr-khu của khu CUỐI, rồi mới đóng .btr-grid — đủ 3 thẻ, cân bằng.
-  return `<p class="btr-thang">Cột chạm nóc ô = <b>${max} phòng</b> — mọi ô dùng chung thang đo này,
-      nên so được tầng này với tầng kia.</p>
+  return `<p class="btr-thang">Mọi ô chung một thang đo — cột chạm nóc = <b>${max} phòng</b>.</p>
     <div class="btr-grid">${html}${khuTruoc !== null ? "</div></div>" : ""}</div>`;
 }
 
@@ -2214,20 +2231,17 @@ function btrNhanDinh(bt, V) {
   // VIỆC CẦN LÀM — một câu duy nhất, đặt TRÊN mọi con số. Bản trước có 4 gạch đầu dòng cùng trọng
   // số và KHÔNG câu nào nói "vậy phải làm gì": người điều phối phải tự ghép 4 con số mới ra việc.
   // ⚠️ Chỉ nói điều SUY THẲNG từ hai giờ đỉnh (R09) — không đoán nguyên nhân, không hứa kết quả.
+  // ⚠️ MỘT CÂU, KHÔNG NHẮC LẠI SỐ đã có ở gạch đầu dòng ngay dưới. Bản vòng trước ghép thêm vế
+  // "mỗi phòng siêu âm gánh 21,8 ca — nhiều hơn bên kia (18,8)" ⇒ bốn con số (8h · 10h · 21,8 ·
+  // 18,8) xuất hiện HAI LẦN cách nhau 5cm, trái luật "mỗi con số chỉ ở một nơi" (§12.3).
   let viec = "";
   if (dp != null && ds != null) {
-    if (ds > dp) viec = `Khung <b>${ds}h</b> là lúc chuyển người sang <b>siêu âm</b> — siêu âm đông`
-      + ` nhất ở giờ này, còn phòng khám đã qua đỉnh từ ${dp}h (sớm hơn ${ds - dp} giờ).`;
-    else if (ds < dp) viec = `Khung <b>${dp}h</b> cần giữ người ở <b>phòng khám</b> — phòng khám`
-      + ` đông nhất ở giờ này, siêu âm đã qua đỉnh từ ${ds}h.`;
-    else viec = `Hai bên cùng đông nhất lúc <b>${dp}h</b> — khung này <b>không chuyển qua lại`
-      + ` được</b>, phải thêm người cho cả hai.`;
-    if (np && ns) {
-      const sa = ns.v > np.v;
-      viec += ` Ở giờ nặng nhất, mỗi phòng ${sa ? "siêu âm" : "khám"} gánh`
-        + ` <b>${btrSo(sa ? ns.v : np.v, true)} ${sa ? "ca" : "người"}</b>`
-        + ` — nhiều hơn bên kia (${btrSo(sa ? np.v : ns.v, true)}).`;
-    }
+    if (ds > dp) viec = `Chuyển người sang <b>siêu âm</b> ở khung <b>${ds}h</b> — phòng khám đã qua`
+      + ` đỉnh từ ${dp}h.`;
+    else if (ds < dp) viec = `Giữ người ở <b>phòng khám</b> khung <b>${dp}h</b> — siêu âm đã qua`
+      + ` đỉnh từ ${ds}h.`;
+    else viec = `Hai bên cùng đông nhất lúc <b>${dp}h</b> — khung này không chuyển qua lại được,`
+      + ` phải thêm người cho cả hai.`;
   }
   const ds_ul = b.length ? `<ul class="btr-nd">${b.map(x => `<li>${x}</li>`).join("")}</ul>` : "";
   return (viec ? `<p class="btr-viec"><span class="btr-vlab">Điều phối</span>${viec}</p>` : "")
@@ -2347,13 +2361,12 @@ function renderBoTri(bt) {
       <div class="btr-axis">${G.map(h => `<span>${h}h</span>`).join("")}</div></div>
     <p class="btr-axis-t">Khung giờ trong ngày${H.lo > 0 || H.hi < bt.gio.length - 1
       ? ` — chỉ hiện ${G[0]}h–${G[G.length - 1]}h vì ngoài khoảng này chưa có số liệu` : ""}</p>
-    <h3 class="btr-h3">Phòng khám vs Phòng siêu âm — theo từng khu · từng tầng
+    <h3 class="btr-h3">Đi siêu âm có gần phòng khám không — theo từng tầng
       <span class="btr-legend">
         <span class="btr-key"><i class="btr-sw btr-pk"></i>Phòng khám</span>
         <span class="btr-key"><i class="btr-sw btr-sa"></i>Phòng siêu âm</span></span></h3>
-    <p class="btr-note">Mỗi ô là một tầng. Số trên ô = <b>số phòng cùng hoạt động lúc cao nhất /
-      tổng số phòng</b> của tầng đó; thiếu dòng nào là tầng đó không có loại phòng đó
-      (Khu KM tầng 2·3 chỉ có phòng siêu âm).</p>
+    <p class="btr-note">Mỗi ô là một tầng — số ghi <b>cao nhất bao nhiêu phòng cùng mở / tổng số
+      phòng</b>, cột là nhịp theo giờ. Thiếu dòng nào là tầng đó không có loại phòng đó.</p>
     ${btrLuoi(V, H)}
     ${btrBangKhu(bt, V, mot, mm)}`;
 }
