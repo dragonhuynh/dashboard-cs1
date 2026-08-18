@@ -1833,6 +1833,33 @@ function btrMax(arrs) {
   return m || 1;
 }
 
+// GIỜ CÓ PHÒNG MỞ MÀ KHÔNG CÓ HÀNG ĐỢI = giờ đó KHÔNG có mốc thu nào (vòng `--auto` không chạy /
+// không vào được HIS). Hai chuỗi đến từ hai nguồn khác nhau nên chúng lệch được:
+//   · `mo`  suy từ ca làm của bác sĩ (`clinic_doctor_session` đọc CẢ NGÀY) ⇒ dựng lại được giờ đã qua
+//   · `cho` / `xong` cần SNAPSHOT tại đúng giờ đó ⇒ mất mốc là mất luôn, không hồi tố được
+// ⚠️ PHẢI NÓI RA (luật 14). Sáng 18/08 mất mốc 6h–10h: bảng in "—" ở 5/6 cột, chú thích cuối bảng
+// chỉ nêu BA khả năng chung chung ⇒ người dùng đọc thành "dashboard chưa cập nhật" và báo lỗi.
+// Bám vào CHÍNH MẢNG ĐANG VẼ (`V`), không đọc `bt.moc`: `bt.moc` chỉ là của HÔM NAY nên chọn ngày
+// khác là nó nói về ngày khác — đúng lớp lỗi "hai nguồn cho một sự thật".
+function btrMatMoc(V, H) {
+  const gs = [];
+  for (let i = H.lo; i <= H.hi; i++) {
+    const coMo = V.pk.mo[i] != null || V.sa.mo[i] != null;
+    const coCho = V.pk.cho[i] != null || V.sa.cho[i] != null;
+    if (coMo && !coCho) gs.push(V.gio[i]);
+  }
+  if (!gs.length) return null;
+  // Gom giờ liên tiếp thành khoảng: "6h–10h" chứ không phải "6h · 7h · 8h · 9h · 10h".
+  const doan = [];
+  for (let i = 0; i < gs.length;) {
+    let j = i;
+    while (j + 1 < gs.length && gs[j + 1] === gs[j] + 1) j++;
+    doan.push(i === j ? `${gs[i]}h` : `${gs[i]}h–${gs[j]}h`);
+    i = j + 1;
+  }
+  return { gio: gs, text: doan.join(" · ") };
+}
+
 // ⚠️ Bản trước dùng `String(v).replace(".", ",")` khi có phần lẻ ⇒ MẤT dấu nhóm nghìn: chế độ nhiều
 // ngày in **"1296,5"** thay vì "1.296,5" ở trục panel "Số đang chờ" và cột "Đang chờ" của bảng —
 // trái quy ước số VN của dự án (48.716 · 4.871,6), và số 4 chữ số không nhóm thì đọc phải đếm.
@@ -2042,7 +2069,7 @@ function btrLuoi(bt, H) {
 //    biểu đồ ngay trên (chuẩn tiếp cận) — gập nó lại thì người không rê chuột được phải bấm mới
 //    đọc được con số, tức đúng thứ nó sinh ra để phục vụ. `.btr-bang` nay là <div>, không phải
 //    <details> ⇒ ĐỪNG thêm <summary> trở lại (style của summary đã xoá khỏi style.css).
-function btrBangKhu(bt, V, mot) {
+function btrBangKhu(bt, V, mot, mm) {
   // ⚠️ Số khu lấy TỪ DỮ LIỆU, đừng gõ cứng "Cả 3 khu": khi gộp KM+M thì `V.khu` chỉ còn 2 phần tử
   //    trong khi vẫn là 3 tòa nhà, và gỡ `KHU_HIEN_THI` là thành 8 tòa — chữ gõ cứng sẽ nói sai.
   const nKhu = (bt.khu || []).length || (V.khu || []).length;
@@ -2055,7 +2082,8 @@ function btrBangKhu(bt, V, mot) {
     <p class="btr-note">“Giải toả” = số người đang chờ ÷ tốc độ giải quyết của chính giờ đó —
       tức <b>với nhịp làm việc lúc đó thì bao lâu mới hết hàng</b>. Ô “—” là giờ chưa đo được
       (chưa có mốc thu, chưa làm xong ca nào, hoặc ngoài giờ hoạt động chính nên tỷ số không có
-      nghĩa).</p></div>`;
+      nghĩa).${mm ? ` <b class="btr-mmn">Ngày này: ${esc(mm.text)} không có mốc thu nào</b> — mọi
+      ô “—” ở những giờ đó là do thiếu số liệu, không phải bằng 0.` : ""}</p></div>`;
 }
 
 function btrMotBang(bt, x, mot) {
@@ -2254,6 +2282,15 @@ function renderBoTri(bt) {
   // Chỉ dựng cho panel 1; hai panel kia vẽ số đếm nên mọi giờ có số đều vẽ được.
   const pkC = c(V.pk.gio_chinh), saC = c(V.sa.gio_chinh);
   const pkM = c(V.pk.mo), saM = c(V.sa.mo);
+  // GIỜ MẤT MỐC THU — nói ra NGAY Ở ĐẦU KHỐI, đừng để người đọc tự suy từ một vùng gạch chéo và
+  // một bảng đầy dấu "—" (họ sẽ kết luận dashboard hỏng — đã xảy ra thật 18/08). Chỉ áp cho chế độ
+  // MỘT ngày: chế độ nhiều ngày lấy trung vị nên "rỗng" ở đó mang nghĩa khác (quá nửa số ngày thiếu).
+  const mm = mot ? btrMatMoc(V, H) : null;
+  const mmHtml = mm ? `<p class="btr-mm">⚠ <b>${mm.text} chưa thu được số liệu</b> — không có vòng
+    cập nhật nào chạy trong khung giờ đó, nên <b>Số đang chờ</b>, <b>Xong trong giờ</b> và ba tỷ số
+    của những giờ này để trống (vùng gạch chéo trên biểu đồ · ô “—” trong bảng). Số liệu theo giờ
+    <b>không lấy lại được</b>: HIS chỉ trả về tình trạng ở thời điểm hỏi. Riêng <b>Phòng mở</b> vẫn
+    có, vì nó suy từ giờ làm việc của bác sĩ chứ không cần mốc thu.</p>` : "";
   const ngoaiGio = G.map((h, i) => {
     if (pkC[i] || saC[i]) return null;                        // ít nhất một bên còn tính được
     if (pkM[i] == null && saM[i] == null) return null;         // chưa đo được thật → để gạch chéo
@@ -2266,6 +2303,7 @@ function renderBoTri(bt) {
     <div class="btr-lead">
       <p class="btr-dn"><b>Phòng đang hoạt động</b> = phòng <b>có bác sĩ làm việc trong phòng</b>,
         tính theo khoảng từ ca đầu đến ca cuối của từng người trong buổi. ${pham_vi}</p>
+      ${mmHtml}
       ${btrNhanDinh(bt, V)}
     </div>
     ${btrPanel({
@@ -2294,7 +2332,7 @@ function renderBoTri(bt) {
       tổng số phòng</b> của tầng đó; thiếu dòng nào là tầng đó không có loại phòng đó
       (Khu KM tầng 2·3 chỉ có phòng siêu âm).</p>
     ${btrLuoi(V, H)}
-    ${btrBangKhu(bt, V, mot)}`;
+    ${btrBangKhu(bt, V, mot, mm)}`;
 }
 
 // Bấm chọn chế độ / đổi ngày → vẽ lại. Uỷ quyền sự kiện vì khối được dựng lại mỗi vòng 5 phút.

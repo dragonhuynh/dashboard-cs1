@@ -1742,6 +1742,15 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 .btr-lead { margin-bottom: 12px; }
 .btr-dn { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0 0 8px; }
 .btr-canh { color: var(--amber); font-weight: 600; }
+/* MẤT MỐC THU — callout. ⚠️ Màu cảnh báo chỉ đặt ở VIỀN, chữ dùng `--ink`: `--amber` #d97706 đo được
+   3,19:1 trên nền trắng (WCAG 1.4.3 đòi ≥4,5:1 cho chữ nhỏ) — cùng lý do đã chốt cho `--brand-pink-text`
+   ở §12.12 và cho tên phòng tab Giường. Nền `--amber-bg` #fffbeb nên chữ `--ink` vẫn tương phản rất cao. */
+.btr-mm {
+  font-size: 12.5px; line-height: 1.55; margin: 0 0 10px; color: var(--ink);
+  background: var(--amber-bg); border-left: 3px solid var(--amber);
+  border-radius: 6px; padding: 8px 10px;
+}
+.btr-mmn { color: var(--ink); }
 .btr-nd { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink); line-height: 1.65; }
 .btr-nd li { margin-bottom: 2px; }
 .btr-empty { font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.6; }
