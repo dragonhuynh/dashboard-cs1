@@ -1928,10 +1928,14 @@ function btrPanel(cfg) {
         ? `<u class="btr-dinh">${btrSo(v, le)}</u>` : "";
       bars += `<i class="btr-b ${s.cls}" style="height:${pc.toFixed(1)}%">${nhan}</i>`;
     });
-    // ĐÁNH DẤU CỘT ĐỈNH bằng nền mờ. Cả khối tồn tại để trả lời "nhịp hai bên có khớp không", mà
-    // bản trước chỉ có NHÃN SỐ trên cột đỉnh ⇒ độ lệch phải ĐỌC ra từ dòng chữ, không NHÌN ra được.
-    // Nền mờ theo màu chuỗi làm khoảng cách giữa hai đỉnh thành một khoảng trống đo được bằng mắt.
-    const dg = (i === dinhIdx[0] ? 1 : 0) + (i === dinhIdx[1] ? 2 : 0);
+    // ĐÁNH DẤU CỘT ĐỈNH bằng nền mờ → độ lệch nhịp NHÌN ra được, không phải đọc từ dòng chữ.
+    // ⚠️ CHỈ ở panel có gạch đầu dòng tương ứng (`danh_dinh`). Bản trước bật cho cả 3 panel ⇒ ba cặp
+    //    đỉnh ở NĂM giờ khác nhau (tải 8h/11h · số phòng mở 9h/7h · hàng đợi 8h/10h) cùng lúc trên
+    //    một trục ⇒ mắt dóng dọc ra ba câu chuyện lệch nhau trong khi chữ chỉ kể một. Panel "Số
+    //    phòng đang hoạt động" không đánh dấu: đỉnh của nó là "lúc nào mở nhiều phòng nhất", không
+    //    phải một kết luận điều phối, và nó không có gạch đầu dòng nào nói về nó.
+    const dg = !cfg.danh_dinh ? 0
+      : (i === dinhIdx[0] ? 1 : 0) + (i === dinhIdx[1] ? 2 : 0);
     cols += `<div class="btr-col${[" ", " btr-dgp", " btr-dgs", " btr-dg2"][dg]}"`
           + ` title="${esc(tip)}">${bars}</div>`;
   });
@@ -2002,9 +2006,13 @@ function btrLuoi(bt, H) {
       const nPk = oKhu.reduce((s, x) => s + (x.n_phong || 0), 0);
       const nSa = oKhu.reduce((s, x) => s + (x.n_phong_sa || 0), 0);
       const tangSa = oKhu.filter(x => x.n_phong_sa > 0).map(x => x.tang || "chưa rõ tầng");
+      // TỶ LỆ KHÁM / SIÊU ÂM — con số so được giữa các tòa mà không cần tô màu phán xét: đo 18/08
+      // ra Khu KM 1,4 · Khu N 2,4 · Khu M **19** ⇒ tòa lệch hẳn tự lộ ra. Chỉ ghi khi tòa có cả hai
+      // loại phòng (tòa không có siêu âm thì tỷ lệ vô nghĩa, đã có câu riêng).
+      const ty = nSa ? Math.round((nPk / nSa) * 10) / 10 : null;
       const tomTat = nSa
-        ? `${nPk} phòng khám · <b class="btr-ksa">${nSa} phòng siêu âm</b>`
-          + ` ở ${tangSa.join(" · ")}`
+        ? `${nPk} phòng khám · <b class="btr-ksa">${nSa} phòng siêu âm</b> ở ${tangSa.join(" · ")}`
+          + (nPk ? ` — mỗi phòng siêu âm gánh <b>${btrSo(ty, true)}</b> phòng khám` : "")
         : `${nPk} phòng khám · <b class="btr-knosa">không có phòng siêu âm</b>`
           + ` — người bệnh phải sang tòa khác`;
       html += `<div class="btr-khu"><h4>${esc(c.khu_nhan)}`
@@ -2061,8 +2069,9 @@ function btrLuoi(bt, H) {
     html += `<div class="btr-cell" title="${esc(tip)}">
         <div class="btr-cn">${esc(c.tang || "Chưa rõ tầng")}</div>
         <div class="btr-cso">
-          ${coPk ? `<span class="btr-cs">${dinh}/${c.n_phong}<i>khám</i></span>` : ""}
-          ${coSa ? `<span class="btr-cs sa">${dinhSa}/${c.n_phong_sa}<i>siêu âm</i></span>` : ""}
+          ${coPk ? `<span class="btr-cs">${Math.round(dinh)}/${c.n_phong}<i>khám</i></span>` : ""}
+          ${coSa ? `<span class="btr-cs sa">${Math.round(dinhSa)}/${c.n_phong_sa}<i>siêu âm</i></span>`
+                 : ""}
         </div>
         <div class="btr-mplot">${cols}</div>
         <div class="btr-mtruc"><span>${gioH[0]}h</span><span>${gioH[gioH.length - 1]}h</span></div>
@@ -2130,9 +2139,10 @@ function btrBang(bt, V, mot, coSa) {
   // (--brand-blue-50 ⇄ --brand-pink-50) → bảng và biểu đồ nói cùng một ngôn ngữ màu.
   const o = (s, i) => {
     const c = s === "pk" ? "cpk" : "csa";
-    return `<td class="${c}">${btrSo(V[s].mo[i], !mot)}</td>`
-      + `<td class="${c}">${btrSo(V[s].cho[i], !mot)}</td>`
-      + `<td class="${c}">${btrSo(V[s].xong[i], !mot)}</td>`
+    // 3 cột ĐẾM ĐƯỢC → làm tròn (xem ghi chú ở btrNhanDinh); 3 cột TỶ SỐ giữ một chữ số lẻ.
+    return `<td class="${c}">${btrSo(V[s].mo[i])}</td>`
+      + `<td class="${c}">${btrSo(V[s].cho[i])}</td>`
+      + `<td class="${c}">${btrSo(V[s].xong[i])}</td>`
       + `<td class="${c} btr-r">${btrSo(V[s].moi_phong[i], true)}</td>`
       + `<td class="${c} btr-r">${btrSo(V[s].nang_suat[i], true)}</td>`
       // lớp `btr-gt` để phép nghiệm thu bám vào Ý NGHĨA ô, không bám vào VỊ TRÍ cột (bảng của khu
@@ -2187,9 +2197,19 @@ function btrNhanDinh(bt, V) {
   //   · MỖI PHÒNG gánh nặng nhất = `cho ÷ mo` → khi nào từng phòng đuối nhất (ít phòng mở hơn)
   // Nay mỗi gạch đầu dòng mở đầu bằng NHÃN ĐẠI LƯỢNG, và hai bên nằm CÙNG một dòng để so trực tiếp.
   if (dp != null && ds != null) {
-    b.push(`<b>Hàng đợi đông nhất:</b> phòng khám <b>${dp}h</b> (${btrSo(V.pk.cho[ip], true)} người)`
-      + ` · siêu âm <b>${ds}h</b> (${btrSo(V.sa.cho[is], true)} ca)`
+    // ⚠️ Số ĐẾM ĐƯỢC (người · ca · phòng) LÀM TRÒN, kể cả chế độ nhiều ngày: trung vị của số ngày
+    // chẵn hay ra đuôi ",5" ⇒ bản trước in "1.296,5 người" và "3,5/5 phòng khám" — không có nửa
+    // người, nửa phòng, và người điều phối không hành động được với nửa đơn vị. Chỉ TỶ SỐ
+    // (người/phòng · ca/phòng/giờ · giờ giải toả) mới giữ một chữ số lẻ.
+    b.push(`<b>Hàng đợi đông nhất:</b> phòng khám <b>${dp}h</b> (${btrSo(V.pk.cho[ip])} người)`
+      + ` · siêu âm <b>${ds}h</b> (${btrSo(V.sa.cho[is])} ca)`
       + (ds === dp ? " — cùng giờ." : ` — lệch <b>${Math.abs(ds - dp)} giờ</b>.`));
+  } else if (dp != null) {
+    b.push(`<b>Hàng đợi đông nhất:</b> phòng khám <b>${dp}h</b> (${btrSo(V.pk.cho[ip])} người)`
+      + ` — siêu âm chưa có số để so.`);
+  } else if (ds != null) {
+    b.push(`<b>Hàng đợi đông nhất:</b> siêu âm <b>${ds}h</b> (${btrSo(V.sa.cho[is])} ca)`
+      + ` — phòng khám chưa có số để so.`);
   }
   // Giờ nặng nhất theo TỶ SỐ (người trên mỗi phòng đang mở) — đó mới là mức chịu tải thật.
   // ⚠️ CHỈ xét GIỜ HOẠT ĐỘNG CHÍNH: cuối buổi còn 3,5 phòng mở với 129 người chờ ra "37,6
@@ -2204,18 +2224,22 @@ function btrNhanDinh(bt, V) {
     const i = dinhCua(o.giai_toa);
     return i < 0 ? null : { gio: bt.gio[i], v: o.giai_toa[i] };
   };
+  // ⚠️ GHÉP TỪNG VẾ CÓ SỐ, đừng đòi đủ cả hai bên. Bản đầu của gạch đầu dòng gộp viết `if (np && ns)`
+  // ⇒ ngày mà một bên chưa có mốc thu thì CẢ DÒNG biến mất, mang theo cả số của bên KIA đang có
+  // thật — đúng kiểu thiếu-mà-im-lặng (luật 5). Bài kiểm bắt được ở chế độ "Hôm nay".
   const np = nang(V.pk), ns = nang(V.sa);
-  if (np && ns) {
-    b.push(`<b>Mỗi phòng gánh nặng nhất:</b> phòng khám <b>${np.gio}h</b> `
-      + `(${btrSo(np.v, true)} người/phòng, ${btrSo(np.mo, true)} phòng mở)`
-      + ` · siêu âm <b>${ns.gio}h</b> (${btrSo(ns.v, true)} ca/phòng, ${btrSo(ns.mo, true)} phòng mở).`);
-  }
+  const ve = [];
+  if (np) ve.push(`phòng khám <b>${np.gio}h</b> (${btrSo(np.v, true)} người/phòng,`
+    + ` ${btrSo(np.mo)} phòng mở)`);
+  if (ns) ve.push(`siêu âm <b>${ns.gio}h</b> (${btrSo(ns.v, true)} ca/phòng,`
+    + ` ${btrSo(ns.mo)} phòng mở)`);
+  if (ve.length) b.push(`<b>Mỗi phòng gánh nặng nhất:</b> ${ve.join(" · ")}.`);
   const tp = tac(V.pk), ts = tac(V.sa);
-  if (tp && ts) {
-    b.push(`<b>Lâu giải toả nhất:</b> phòng khám <b>${btrSo(tp.v, true)} giờ</b> (lúc ${tp.gio}h)`
-      + ` · siêu âm <b>${btrSo(ts.v, true)} giờ</b> (lúc ${ts.gio}h) — tính theo nhịp làm việc`
-      + ` chính giờ đó.`);
-  }
+  const vt = [];
+  if (tp) vt.push(`phòng khám <b>${btrSo(tp.v, true)} giờ</b> (lúc ${tp.gio}h)`);
+  if (ts) vt.push(`siêu âm <b>${btrSo(ts.v, true)} giờ</b> (lúc ${ts.gio}h)`);
+  if (vt.length) b.push(`<b>Lâu giải toả nhất:</b> ${vt.join(" · ")}`
+    + ` — tính theo nhịp làm việc chính giờ đó.`);
   // BỐ TRÍ KHÔNG GIAN — khu có phòng khám mà KHÔNG có phòng siêu âm. Chuỗi theo giờ không nói được
   // điều này, mà nó lại là vế "bố trí có hợp lý không": người bệnh phải đi sang tòa khác.
   const thieu = (bt.khu || []).filter(k => k.pk > 0 && !k.sa);
@@ -2345,16 +2369,16 @@ function renderBoTri(bt) {
     </div>
     ${btrPanel({
       tieu_de: "Mỗi phòng đang mở gánh bao nhiêu", gio: G, le: true, nhan: true,
-      goi_y: "càng cao càng quá tải", dv_truc: "/phòng", ngoai: ngoaiGio,
+      goi_y: "càng cao càng quá tải", dv_truc: "/phòng", ngoai: ngoaiGio, danh_dinh: true,
       series: [{ ten: "Phòng khám", dv: "người/phòng", cls: "btr-pk", arr: c(V.pk.moi_phong) },
                { ten: "Phòng siêu âm", dv: "ca/phòng", cls: "btr-sa", arr: c(V.sa.moi_phong) }] })}
     ${btrPanel({
       tieu_de: "Số phòng đang hoạt động", don_vi: BTR_DV.phong, dv_truc: BTR_DV.phong,
-      gio: G, le: !mot,
+      gio: G,
       series: [{ ten: "Phòng khám", cls: "btr-pk", arr: c(V.pk.mo) },
                { ten: "Phòng siêu âm", cls: "btr-sa", arr: c(V.sa.mo) }] })}
     ${btrPanel({
-      tieu_de: "Số đang chờ", gio: G, le: !mot,
+      tieu_de: "Số đang chờ", gio: G, danh_dinh: true,
       series: [{ ten: "Chờ khám", dv: BTR_DV.nguoi, cls: "btr-pk", arr: c(V.pk.cho) },
                { ten: "Siêu âm chưa xong", dv: BTR_DV.ca, cls: "btr-sa", arr: c(V.sa.cho) }] })}
     <div class="btr-body"><div class="btr-y"></div>
