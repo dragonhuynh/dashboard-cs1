@@ -1726,9 +1726,26 @@ function btrGop(bt, ngays) {
   // số học nhưng SAI về nghĩa: lúc đó phòng khám đang đóng cửa, hàng còn lại chuyển sang hôm sau
   // chứ không phải đang được giải quyết với nhịp đó. Chỉ tính tỷ số ở GIỜ HOẠT ĐỘNG CHÍNH —
   // giờ mà số phòng mở đạt ≥25% mức cao nhất của chính bên đó trong ngày.
+  // ⚠️ HAI GUARD, chặn HAI ĐẦU khác nhau — ngưỡng 25% một mình KHÔNG đủ (đo 17/08, trung vị 7 ngày):
+  //   · ĐUÔI ngày — `mo` sụp xuống ⇒ ngưỡng 25% bắt được (17h còn 5,5/70 phòng).
+  //   · SƯỜN LÊN đầu ngày — `mo` đã qua 25% mà phòng VẪN ĐANG MỞ DẦN: 6h có 23/70 phòng mở (32,9%,
+  //     lọt ngưỡng) trong khi 905 người đã xếp hàng ⇒ 39,3 người/phòng, gấp 2,1 lần giá trị kế tiếp
+  //     (18,6) và chiếm luôn đỉnh của cả biểu đồ lẫn dòng nhận định ở "7 ngày" và "Tháng này".
+  // Bản chất: hàng đợi lúc mở cửa là hàng TÍCH TỪ TRƯỚC, không do năng lực giờ đó sinh ra — mẫu số
+  // chưa kịp bằng cái nó phải phục vụ. Cùng lớp lỗi với Little's Law ở §19.
+  // ⚠️ Chữa bằng cách NÂNG ngưỡng lên 40% thì hỏng chỗ khác: nó cắt luôn 15h của phòng siêu âm
+  // (9/35 phòng, tỷ số 11,1 — giờ làm việc thật). Phải bắt ĐÚNG dấu hiệu "đang mở dần" = số phòng
+  // còn thấp hơn nhiều so với giờ kế tiếp, chứ không phải "số phòng nhỏ".
   const chinh = (mo) => {
     const mx = Math.max(...mo.filter(v => v != null), 0);
-    return mo.map(v => v != null && mx > 0 && v >= mx * 0.25);
+    // Giờ CÓ SỐ kế tiếp, không phải i+1: mốc thu lỗi ở giữa thì so với ô rỗng là mất luôn phép thử.
+    const ke = (i) => { for (let j = i + 1; j < mo.length; j++) if (mo[j] != null) return mo[j];
+                        return null; };
+    return mo.map((v, i) => {
+      if (v == null || mx <= 0 || v < mx * 0.25) return false;
+      const k = ke(i);
+      return !(k != null && v < k * 0.6);   // còn dưới 60% giờ sau ⇒ đang mở dần, chưa tính tỷ số
+    });
   };
   const loc = (arr, ok) => arr.map((v, i) => ok[i] ? v : null);
   // `lays` = một hoặc NHIỀU hàm, mỗi hàm trả {mo,cho,xong} của một ngày (null nếu ngày đó không có
@@ -1816,9 +1833,13 @@ function btrMax(arrs) {
   return m || 1;
 }
 
+// ⚠️ Bản trước dùng `String(v).replace(".", ",")` khi có phần lẻ ⇒ MẤT dấu nhóm nghìn: chế độ nhiều
+// ngày in **"1296,5"** thay vì "1.296,5" ở trục panel "Số đang chờ" và cột "Đang chờ" của bảng —
+// trái quy ước số VN của dự án (48.716 · 4.871,6), và số 4 chữ số không nhóm thì đọc phải đếm.
+// `toLocaleString("vi-VN")` lo cả hai việc; `le` chỉ còn quyết định có cho phần lẻ hay không.
 function btrSo(v, le) {
   if (v == null) return "—";
-  return le ? String(v).replace(".", ",") : fmt(v);
+  return v.toLocaleString("vi-VN", { maximumFractionDigits: le ? 1 : 0 });
 }
 
 // CẮT khoảng giờ CHƯA TỚI ở hai đầu. Vẽ trọn 6h–20h lúc mới 14h thì gần nửa bề ngang là ô trống,
