@@ -2036,6 +2036,23 @@ body.tv .calm-list .bs-det .bs-body { font-size: 15px; }
 .btr-cs.sa { color: var(--brand-pink-text); margin-left: 0; }
 .btr-cs.sa i { color: var(--brand-pink-text); }
 .btr-cn { align-items: baseline; }
+/* ⚠️ SỐ 0 ĐO ĐƯỢC ≠ CHƯA CÓ SỐ LIỆU (user báo 2026-08-19). `height:0` vẽ ra đúng con số không:
+   KHÔNG GÌ CẢ — mà "không gì cả" trong khối này đã là hoa văn của ô chưa thu được số, nên ô ghi
+   "0/10 siêu âm" đọc thành "biểu đồ hỏng". Vạch RỖNG khác cột đặc về HÌNH (rỗng ⇄ đặc) nên không
+   lẫn với giá trị dương nhỏ, và không phải nâng sàn cột dương (nâng sàn = thổi phồng số nhỏ).
+   Mượn MÀU của chính chuỗi ⇒ biết đó là số 0 của bên nào. Khai SAU .btr-pk/.btr-sa/.btr-mc* để
+   `background: transparent` thắng nền đặc của chúng (cùng độ ưu tiên, khai sau thì thắng). */
+.btr-b0, .btr-m0 {
+  height: 6px; background: transparent; border: 1.5px solid var(--gray); border-radius: 2px;
+}
+.btr-b0.btr-pk, .btr-m0.btr-mc { border-color: var(--brand-blue-dark); }
+.btr-b0.btr-sa, .btr-m0.btr-mc-sa { border-color: var(--brand-pink); }
+.btr-sw.btr-k0 { background: transparent; border: 1.5px solid var(--muted); }
+.btr-g0 { display: inline-flex; align-items: center; gap: 5px; }
+/* Đầu ngày chỉ có 1–2 giờ có số ⇒ cột nở ra bằng cả bề ngang ô, đọc thành thanh nền chứ không
+   phải cột biểu đồ. Cùng mức 26px với `.btr-b` của 3 panel lớn; ngày đủ giờ thì cột đã hẹp hơn
+   nhiều nên luật này không đụng tới. */
+.btr-mgio .btr-mc, .btr-mgio .btr-mc-sa { max-width: 26px; }
 /* Thang đo dùng chung — đặt ngay trên lưới, sát nơi dùng. */
 .btr-thang { font-size: 11.5px; color: var(--muted); margin: 0 0 8px; }
 .btr-h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }

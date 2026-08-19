@@ -1902,7 +1902,7 @@ function btrPanel(cfg) {
     (s.arr || []).forEach((v, i) => { if (v != null && v > bv) { bv = v; bi = i; } });
     return bi;
   });
-  let cols = "", coNa = false, coNgoai = false;
+  let cols = "", coNa = false, coNgoai = false, co0 = false;
   gio.forEach((h, i) => {
     const co = series.some(s => s.arr && s.arr[i] != null);
     if (!co) {
@@ -1922,10 +1922,17 @@ function btrPanel(cfg) {
     series.forEach((s, si) => {
       const v = s.arr ? s.arr[i] : null;
       if (v == null) { bars += `<i class="btr-b btr-trong"></i>`; return; }
-      // Sàn 2% để giá trị >0 không biến mất hẳn; giá trị 0 thật thì để vạch mảnh sát đáy.
-      const pc = v > 0 ? Math.max(2, (v / max) * 100) : 0;
       const nhan = (si === 0 && i === dinhIdx[0]) || (si === 1 && i === dinhIdx[1])
         ? `<u class="btr-dinh">${btrSo(v, le)}</u>` : "";
+      // ⚠️ SỐ 0 ĐO ĐƯỢC PHẢI VẼ RA ĐƯỢC (user báo 2026-08-19: "ghi có số lượng Siêu âm nhưng đang
+      // không hiển thị"). `height:0%` vẽ ra đúng con số không: KHÔNG GÌ CẢ — mà "không gì cả"
+      // trong CHÍNH khối này ĐÃ mang nghĩa "chưa có số liệu" (ô gạch chéo + callout mất mốc ở đầu
+      // khối) ⇒ hai kết luận vận hành NGƯỢC NHAU đọc y hệt nhau (luật 5 · 14).
+      // VẠCH RỖNG (`.btr-b0`) khác cột đặc về HÌNH (rỗng ⇄ đặc) nên không lẫn với một giá trị
+      // dương rất nhỏ. ⚠️ ĐỪNG chữa bằng cách nâng sàn cột dương cho cao hơn vạch 0: sàn 2% ở đây
+      // mới là 1,7px, nâng lên là thổi phồng mọi giá trị nhỏ trên thang đo tới 1.296 người.
+      if (v <= 0) { co0 = true; bars += `<i class="btr-b ${s.cls} btr-b0">${nhan}</i>`; return; }
+      const pc = Math.max(2, (v / max) * 100);   // sàn 2% để giá trị >0 không biến mất hẳn
       bars += `<i class="btr-b ${s.cls}" style="height:${pc.toFixed(1)}%">${nhan}</i>`;
     });
     // ĐÁNH DẤU CỘT ĐỈNH bằng nền mờ → độ lệch nhịp NHÌN ra được, không phải đọc từ dòng chữ.
@@ -1952,7 +1959,8 @@ function btrPanel(cfg) {
     // panel là dạy người đọc một thứ họ không nhìn thấy, và làm hàng chú giải dài gấp đôi.
     + (coNa ? `<span class="btr-key"><i class="btr-sw btr-na"></i>chưa có số liệu</span>` : "")
     + (coNgoai ? `<span class="btr-key"><i class="btr-sw btr-ngoai"></i>ngoài giờ hoạt động chính`
-                 + `</span>` : "");
+                 + `</span>` : "")
+    + (co0 ? `<span class="btr-key"><i class="btr-sw btr-k0"></i>đo được, bằng 0</span>` : "");
   // TRỤC DỌC + LƯỚI NGANG: bản đầu không có, nên ngoài cột đỉnh ra thì KHÔNG cột nào đọc được giá
   // trị — người xem phải rê chuột từng cột (và trên điện thoại thì chịu). 3 mốc là đủ: 0 · giữa ·
   // cao nhất; nhiều hơn thành lưới rối mà không thêm thông tin.
@@ -1990,7 +1998,7 @@ function btrLuoi(bt, H) {
   // MỘT THANG ĐO CHUNG cho cả phòng khám lẫn siêu âm, cả 12 ô: đó là điều kiện để so ô này với ô
   // kia. Thang riêng từng ô thì cột cao bằng nhau trong khi số thực chênh 10 lần.
   const max = btrMax(cum.map(c => c.mo).concat(cum.map(c => c.mo_sa)));
-  let html = "", khuTruoc = null;
+  let html = "", khuTruoc = null, co0 = false, coNa = false;
   cum.forEach(c => {
     if (c.khu !== khuTruoc) {
       // ⚠️ ĐÓNG CẢ HAI thẻ (.btr-cells VÀ .btr-khu). Bản trước chỉ đóng một → mỗi khu mới LỒNG vào
@@ -2037,13 +2045,17 @@ function btrLuoi(bt, H) {
       // đè mất gạch chéo → ô rỗng vẽ thành CỘT XANH CAO NHẤT, đọc thành "8 giờ tối phòng nào
       // cũng mở" (chỉ lộ ra khi CHỤP ẢNH — bài kiểm đếm số không thấy).
       if (v == null && w == null) {
+        coNa = true;
         cols += `<i class="btr-mna" title="${h}h — chưa có số liệu"></i>`;
         return;
       }
       const cot = (x, cls) => {
         if (x == null) return "";
-        const pc = x > 0 ? Math.max(4, (x / max) * 100) : 0;
-        return `<i class="${cls}" style="height:${pc.toFixed(1)}%"></i>`;
+        // Số 0 ĐO ĐƯỢC → vạch RỖNG sát đáy, KHÔNG phải "không vẽ gì" — xem khối ghi chú ở
+        // btrPanel. Đo sáng 19/08: 7/14 ô của lưới có chuỗi cao đúng 0,0px, trong đó 4 ô trống
+        // trơn cả hai chuỗi ⇒ ô ghi "0/10 siêu âm" mà nhìn vào không khác gì ô mất số liệu.
+        if (x <= 0) { co0 = true; return `<i class="${cls} btr-m0"></i>`; }
+        return `<i class="${cls}" style="height:${Math.max(4, (x / max) * 100).toFixed(1)}%"></i>`;
       };
       // TOOLTIP TỪNG GIỜ: ô nhỏ 30px không có nhãn trục dọc, nên nếu chỉ có tooltip ở CẢ Ô thì
       // người đọc biết đỉnh là bao nhiêu mà không biết giờ nào cao giờ nào thấp. Ghi rõ "chưa có
@@ -2081,7 +2093,13 @@ function btrLuoi(bt, H) {
   // bao nhiêu ⇒ so được ô này với ô kia nhưng KHÔNG đọc được giá trị của bất kỳ cột nào. Một con số
   // là đủ: cột chạm nóc = bao nhiêu phòng.
   // Đóng nốt .btr-cells + .btr-khu của khu CUỐI, rồi mới đóng .btr-grid — đủ 3 thẻ, cân bằng.
-  return `<p class="btr-thang">Mọi ô chung một thang đo — cột chạm nóc = <b>${max} phòng</b>.</p>
+  // NÓI RA nghĩa của vạch rỗng, và chỉ in khi nó THẬT SỰ có mặt (cùng luật với chú giải của
+  // btrPanel: in sẵn thứ người đọc không nhìn thấy là dạy họ bỏ qua chú giải). Vế "khác ô gạch
+  // chéo" cũng vậy — chỉ nhắc khi lưới đang có ô gạch chéo để mà phân biệt.
+  const ghi0 = co0 ? ` <span class="btr-g0"><i class="btr-sw btr-k0"></i>vạch rỗng sát đáy = giờ đó`
+      + ` đo được nhưng không phòng nào mở${coNa ? ", khác ô gạch chéo là chưa có số liệu" : ""}.`
+      + `</span>` : "";
+  return `<p class="btr-thang">Mọi ô chung một thang đo — cột chạm nóc = <b>${max} phòng</b>.${ghi0}</p>
     <div class="btr-grid">${html}${khuTruoc !== null ? "</div></div>" : ""}</div>`;
 }
 
